@@ -14,7 +14,6 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [prizeResetKey, setPrizeResetKey] = useState(0);
 
-  // 퀴즈 번호 상태를 App에서 직접 관리하여 탭 바로 아래에 완벽하게 일치시킴
   const [nonsenseIndex, setNonsenseIndex] = useState(0);
   const [audioIndex, setAudioIndex] = useState(0);
 
@@ -55,10 +54,6 @@ export default function App() {
     >
       {/* 상단 헤더 */}
       <header className="relative z-30 w-full px-8 py-4 flex justify-between items-start select-none">
-        {/* 
-          좌측 탭 메뉴 & 바로 아래 번호 배지
-          (한 묶음으로 묶어서 탭 바로 밑에 완벽하게 좌측 정렬됨)
-        */}
         <div className="flex flex-col items-start gap-2.5">
           <nav className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-[#fdc879]">
             <button
@@ -95,17 +90,17 @@ export default function App() {
             </button>
           </nav>
 
-          {/* 탭 바로 밑에 칼정렬되는 퀴즈 번호 배지 (겹침 절대 없음) */}
+          {/* 탭 바로 밑 배지 */}
           {activeTab === 'nonsense' && (
-            <div className="px-1 animate-fade-in">
-              <span className="bg-[#cb000b] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-md inline-block">
+            <div className="pl-1">
+              <span className="bg-[#cb000b] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-sm inline-block">
                 문제 {nonsenseIndex + 1} / {NONSENSE_QUIZZES.length}
               </span>
             </div>
           )}
           {activeTab === 'audio' && (
-            <div className="px-1 animate-fade-in">
-              <span className="bg-[#076327] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-md inline-block">
+            <div className="pl-1">
+              <span className="bg-[#076327] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-sm inline-block">
                 음악 퀴즈 {audioIndex + 1} / {DUAL_AUDIO_QUIZZES.length}
               </span>
             </div>
@@ -141,8 +136,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* 중앙 메인 컨텐츠 */}
-      <main className="relative z-10 w-full max-w-[1720px] mx-auto px-4 md:px-8 pt-4 pb-4 flex-grow flex flex-col justify-center items-center">
+      {/* 
+        중앙 메인 컨텐츠:
+        상단 리스를 완전히 피하도록 150px 아래(pt-[150px])로 이동
+      */}
+      <main className="relative z-10 w-full max-w-[1720px] mx-auto px-6 pt-[150px] pb-6 flex-grow flex flex-col justify-center items-center">
         {activeTab === 'nonsense' && (
           <ImageNonsenseQuiz index={nonsenseIndex} setIndex={setNonsenseIndex} />
         )}
