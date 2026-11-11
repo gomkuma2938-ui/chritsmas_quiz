@@ -29,7 +29,7 @@ export default function PrizeBoard() {
   };
 
   return (
-    <div className="flex flex-col justify-center items-center w-full max-w-[1650px] mx-auto select-none py-2">
+    <div className="flex flex-col justify-center items-center w-full max-w-[1320px] mx-auto select-none">
       <style>{`
         .perspective-1000 { perspective: 1000px; }
         .transform-style-3d { transform-style: preserve-3d; }
@@ -38,36 +38,36 @@ export default function PrizeBoard() {
       `}</style>
 
       {/* 
-        카드 높이를 h-36 md:h-40 lg:h-44(약 175px)로 대폭 키워
-        상하좌우 빈 공간 없이 꽉 차게 배치
+        카드 크기를 적정 크기(h-28 md:h-32)로 줄여 
+        체크무늬 영역 안에 딱 들어가게 조정
       */}
-      <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-4 md:gap-6">
+      <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-3.5 md:gap-4">
         {INITIAL_PRIZES.map((prize, idx) => {
           const isFlipped = !!openedCards[idx];
           return (
             <div
               key={idx}
               onClick={() => handleCardClick(idx)}
-              className="h-36 md:h-40 lg:h-44 perspective-1000 cursor-pointer group"
+              className="h-28 md:h-32 perspective-1000 cursor-pointer group"
             >
               <div
                 className={`relative w-full h-full duration-500 transform-style-3d transition-transform rounded-2xl ${
                   isFlipped ? 'rotate-y-180' : ''
                 }`}
               >
-                {/* 카드 앞면: 특대형 숫자 */}
-                <div className="absolute inset-0 w-full h-full bg-[#cb000b] hover:bg-[#fa4134] rounded-2xl shadow-lg flex items-center justify-center backface-hidden transition-colors">
-                  <span className="text-5xl md:text-6xl lg:text-7xl font-black text-white">
+                {/* 앞면: 플랫 솔리드 레드 */}
+                <div className="absolute inset-0 w-full h-full bg-[#cb000b] hover:bg-[#fa4134] rounded-2xl shadow-md flex items-center justify-center backface-hidden transition-colors">
+                  <span className="text-4xl md:text-5xl font-black text-white">
                     {idx + 1}
                   </span>
                 </div>
 
-                {/* 카드 뒷면: 뒤집힌 후 본체 */}
-                <div className="absolute inset-0 w-full h-full bg-[#fdf4e8] text-[#cb000b] rounded-2xl border-2 border-[#fdab23] p-3 flex flex-col items-center justify-center text-center backface-hidden rotate-y-180 shadow-md">
-                  <span className="text-xs text-[#076327] font-bold mb-1.5 bg-white px-2.5 py-0.5 rounded border border-[#fdc879]">
-                    NO. {idx + 1}
-                  </span>
-                  <div className="text-base md:text-lg font-black leading-snug break-keep text-[#cb000b] line-clamp-3">
+                {/* 
+                  뒷면: NO.2 태그를 완전히 제거하고 
+                  선물 텍스트만 깔끔하게 노출
+                */}
+                <div className="absolute inset-0 w-full h-full bg-[#fdf4e8] text-[#cb000b] rounded-2xl border-2 border-[#fdab23] p-3 flex items-center justify-center text-center backface-hidden rotate-y-180 shadow-md">
+                  <div className="text-base md:text-lg font-black leading-snug break-keep text-[#cb000b] line-clamp-2">
                     {prize}
                   </div>
                 </div>
@@ -94,11 +94,7 @@ export default function PrizeBoard() {
               <X className="w-8 h-8" />
             </button>
 
-            <div className="inline-block bg-[#076327] text-white font-bold text-xl px-7 py-2.5 rounded-xl shadow-sm mb-6">
-              🎁 NO. {zoomedIndex + 1} 번 선물
-            </div>
-
-            <div className="text-5xl md:text-6xl font-black text-[#cb000b] my-6 leading-tight break-keep">
+            <div className="text-4xl md:text-5xl font-black text-[#cb000b] my-6 leading-tight break-keep">
               {INITIAL_PRIZES[zoomedIndex]}
             </div>
           </div>
