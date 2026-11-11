@@ -152,9 +152,6 @@ export default function App() {
         )}
       </main>
 
-      <footer className="relative z-10 py-1 text-center text-xs text-[#cb000b]/70 font-semibold select-none">
-        🎄 성탄 축하 레크리에이션
-      </footer>
     </div>
   );
 }
