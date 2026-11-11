@@ -5,6 +5,7 @@ import BgmPlayer from './components/BgmPlayer';
 import ImageNonsenseQuiz from './components/ImageNonsenseQuiz';
 import DualAudioQuiz from './components/DualAudioQuiz';
 import PrizeBoard from './components/PrizeBoard';
+import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from './data/quizData';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('nonsense');
@@ -12,6 +13,10 @@ export default function App() {
   const [volume, setVolume] = useState(40);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [prizeResetKey, setPrizeResetKey] = useState(0);
+
+  // 퀴즈 번호 상태를 App에서 직접 관리하여 탭 바로 아래에 완벽하게 일치시킴
+  const [nonsenseIndex, setNonsenseIndex] = useState(0);
+  const [audioIndex, setAudioIndex] = useState(0);
 
   const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
 
@@ -48,43 +53,64 @@ export default function App() {
         backgroundImage: `url(${bgImageUrl})`
       }}
     >
-      {/* 상단 헤더: 좌/우 여백 확보 */}
+      {/* 상단 헤더 */}
       <header className="relative z-30 w-full px-8 py-4 flex justify-between items-start select-none">
-        {/* 좌측 탭 메뉴 (플랫 단색 디자인) */}
-        <nav className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-[#fdc879]">
-          <button
-            onClick={() => setActiveTab('nonsense')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
-              activeTab === 'nonsense'
-                ? 'bg-[#cb000b] text-white shadow-sm'
-                : 'text-gray-600 hover:text-[#cb000b] hover:bg-[#feefde]'
-            }`}
-          >
-            <ImageIcon className="w-4 h-4" /> 그림 넌센스
-          </button>
+        {/* 
+          좌측 탭 메뉴 & 바로 아래 번호 배지
+          (한 묶음으로 묶어서 탭 바로 밑에 완벽하게 좌측 정렬됨)
+        */}
+        <div className="flex flex-col items-start gap-2.5">
+          <nav className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-[#fdc879]">
+            <button
+              onClick={() => setActiveTab('nonsense')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === 'nonsense'
+                  ? 'bg-[#cb000b] text-white shadow-sm'
+                  : 'text-gray-600 hover:text-[#cb000b] hover:bg-[#feefde]'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" /> 그림 넌센스
+            </button>
 
-          <button
-            onClick={() => setActiveTab('audio')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
-              activeTab === 'audio'
-                ? 'bg-[#cb000b] text-white shadow-sm'
-                : 'text-gray-600 hover:text-[#cb000b] hover:bg-[#feefde]'
-            }`}
-          >
-            <Music className="w-4 h-4" /> 찬양 동시듣기
-          </button>
+            <button
+              onClick={() => setActiveTab('audio')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === 'audio'
+                  ? 'bg-[#cb000b] text-white shadow-sm'
+                  : 'text-gray-600 hover:text-[#cb000b] hover:bg-[#feefde]'
+              }`}
+            >
+              <Music className="w-4 h-4" /> 찬양 동시듣기
+            </button>
 
-          <button
-            onClick={() => setActiveTab('prizes')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
-              activeTab === 'prizes'
-                ? 'bg-[#076327] text-white shadow-sm'
-                : 'text-gray-600 hover:text-[#076327] hover:bg-[#feefde]'
-            }`}
-          >
-            <Gift className="w-4 h-4" /> 선물 뽑기판
-          </button>
-        </nav>
+            <button
+              onClick={() => setActiveTab('prizes')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === 'prizes'
+                  ? 'bg-[#076327] text-white shadow-sm'
+                  : 'text-gray-600 hover:text-[#076327] hover:bg-[#feefde]'
+              }`}
+            >
+              <Gift className="w-4 h-4" /> 선물 뽑기판
+            </button>
+          </nav>
+
+          {/* 탭 바로 밑에 칼정렬되는 퀴즈 번호 배지 (겹침 절대 없음) */}
+          {activeTab === 'nonsense' && (
+            <div className="px-1 animate-fade-in">
+              <span className="bg-[#cb000b] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-md inline-block">
+                문제 {nonsenseIndex + 1} / {NONSENSE_QUIZZES.length}
+              </span>
+            </div>
+          )}
+          {activeTab === 'audio' && (
+            <div className="px-1 animate-fade-in">
+              <span className="bg-[#076327] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-md inline-block">
+                음악 퀴즈 {audioIndex + 1} / {DUAL_AUDIO_QUIZZES.length}
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* 우측 컨트롤 */}
         <div className="flex items-center gap-2">
@@ -115,11 +141,17 @@ export default function App() {
         </div>
       </header>
 
-      {/* 중앙 메인 컨텐츠: 상단 리스 바로 밑(pt-24)부터 시작해 아래까지 꽉 채움 */}
-      <main className="relative z-10 w-full px-4 md:px-8 pt-24 pb-4 flex-grow flex flex-col justify-center items-center">
-        {activeTab === 'nonsense' && <ImageNonsenseQuiz />}
-        {activeTab === 'audio' && <DualAudioQuiz />}
-        {activeTab === 'prizes' && <PrizeBoard key={prizeResetKey} />}
+      {/* 중앙 메인 컨텐츠 */}
+      <main className="relative z-10 w-full max-w-[1720px] mx-auto px-4 md:px-8 pt-4 pb-4 flex-grow flex flex-col justify-center items-center">
+        {activeTab === 'nonsense' && (
+          <ImageNonsenseQuiz index={nonsenseIndex} setIndex={setNonsenseIndex} />
+        )}
+        {activeTab === 'audio' && (
+          <DualAudioQuiz index={audioIndex} setIndex={setAudioIndex} />
+        )}
+        {activeTab === 'prizes' && (
+          <PrizeBoard key={prizeResetKey} />
+        )}
       </main>
 
       <footer className="relative z-10 py-1 text-center text-xs text-[#cb000b]/70 font-semibold select-none">
