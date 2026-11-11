@@ -1,11 +1,11 @@
 // src/components/DualAudioQuiz.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Square, ChevronLeft, ChevronRight, Eye, HelpCircle, X } from 'lucide-react';
+import { Play, Square, ChevronLeft, ChevronRight, Eye, HelpCircle, X, Lightbulb, Music2, Disc3 } from 'lucide-react';
 import { DUAL_AUDIO_QUIZZES } from '../data/quizData';
 
 export default function DualAudioQuiz({ index, setIndex }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [activeModal, setActiveModal] = useState(null); // 'hint' | 'answer' | null
+  const [activeModal, setActiveModal] = useState(null);
 
   const audioCtxRef = useRef(null);
   const timerARef = useRef(null);
@@ -80,7 +80,7 @@ export default function DualAudioQuiz({ index, setIndex }) {
   return (
     <div className="w-full flex items-center justify-center gap-5 select-none">
       
-      {/* 이전 화살표: 흰색 배경 + 그린 아이콘 */}
+      {/* 이전 화살표 */}
       <button
         onClick={handlePrev}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#076327] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
@@ -92,12 +92,12 @@ export default function DualAudioQuiz({ index, setIndex }) {
       {/* 카드 */}
       <div className="w-full max-w-[1500px] h-[640px] bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-12 shadow-2xl border border-[#fdc879] flex flex-col items-center justify-between text-center">
         
-        {/* 제목: 초록색 적용 */}
+        {/* 제목 */}
         <div className="pt-6">
           <h3 className="text-5xl md:text-6xl font-black text-[#076327] mb-2">{current.title}</h3>
         </div>
 
-        {/* 재생 버튼: 문구 '두 곡 재생', 색상 빨간색 */}
+        {/* 재생 버튼 */}
         <div className="w-full max-w-md my-auto">
           <button
             onClick={isPlaying ? stopAudio : playDualAudio}
@@ -119,7 +119,7 @@ export default function DualAudioQuiz({ index, setIndex }) {
           </button>
         </div>
 
-        {/* 하단 버튼: 힌트 보기(모달) + 정답 공개(초록색) */}
+        {/* 하단 버튼 */}
         <div className="flex items-center gap-4 pb-2">
           <button
             onClick={() => setActiveModal('hint')}
@@ -137,7 +137,7 @@ export default function DualAudioQuiz({ index, setIndex }) {
         </div>
       </div>
 
-      {/* 다음 화살표: 이전 화살표와 완벽히 동일한 화이트/그린 디자인 */}
+      {/* 다음 화살표 */}
       <button
         onClick={handleNext}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#076327] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
@@ -154,25 +154,36 @@ export default function DualAudioQuiz({ index, setIndex }) {
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#fdf4e8] rounded-3xl p-12 max-w-3xl w-full text-center shadow-2xl relative cursor-default border border-[#fdc879]"
+            className="bg-white rounded-3xl p-8 md:p-12 max-w-2xl w-full text-center shadow-2xl relative cursor-default border-2 border-[#076327]"
           >
             <button 
               onClick={() => setActiveModal(null)}
-              className="absolute top-5 right-5 text-gray-500 hover:text-black p-2 rounded-full transition-all"
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 p-2 rounded-full transition-all"
             >
-              <X className="w-8 h-8" />
+              <X className="w-7 h-7" />
             </button>
-            <span className="text-xl font-bold text-[#076327] bg-white px-6 py-2 rounded-xl inline-block mb-6 shadow-sm border border-[#fdc879]">
-              💡 힌트
+
+            <div className="w-16 h-16 mx-auto mb-3 bg-[#feefde] rounded-2xl border border-[#fdc879] flex items-center justify-center text-[#076327] shadow-sm">
+              <Lightbulb className="w-9 h-9 stroke-[2.2]" />
+            </div>
+
+            <span className="text-xs font-black tracking-widest text-[#076327] uppercase bg-[#feefde] px-4 py-1 rounded-full border border-[#076327]/30">
+              AUDIO HINT
             </span>
-            <div className="text-3xl md:text-4xl font-black text-[#076327] my-4 leading-relaxed break-keep">
-              {current.hint}
+
+            <div className="mt-6 bg-[#fdf4e8] rounded-2xl p-6 md:p-8 border border-[#fdc879]/50 shadow-inner">
+              <p className="text-2xl md:text-3xl font-black text-[#076327] leading-relaxed break-keep">
+                {current.hint}
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🎉 정답 모달 */}
+      {/* 
+        🎉 찬양 정답 모달: 
+        상단 Music2 배지 + 곡 A/B 각각 Disc3 아이콘이 달린 2단 카드 레이아웃
+      */}
       {activeModal === 'answer' && (
         <div 
           onClick={() => setActiveModal(null)}
@@ -180,27 +191,51 @@ export default function DualAudioQuiz({ index, setIndex }) {
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#076327] rounded-3xl p-14 max-w-3xl w-full text-center shadow-2xl relative cursor-default text-white"
+            className="bg-white rounded-3xl p-8 md:p-12 max-w-3xl w-full text-center shadow-2xl relative cursor-default border-2 border-[#076327]"
           >
             <button 
               onClick={() => setActiveModal(null)}
-              className="absolute top-5 right-5 text-white/80 hover:text-white p-2 rounded-full transition-all"
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 p-2 rounded-full transition-all"
             >
-              <X className="w-8 h-8" />
+              <X className="w-7 h-7" />
             </button>
-            <span className="text-base font-black uppercase tracking-widest text-[#fdc879] block mb-6">
-              찬양 2곡 정답
+
+            <div className="w-16 h-16 mx-auto mb-3 bg-[#076327] rounded-2xl flex items-center justify-center text-[#fdc879] shadow-md">
+              <Music2 className="w-9 h-9 stroke-[2.2]" />
+            </div>
+
+            <span className="text-xs font-black tracking-widest text-[#076327] uppercase bg-[#feefde] px-4 py-1 rounded-full border border-[#076327]/20">
+              DUAL HYMN REVEAL
             </span>
-            <div className="grid md:grid-cols-2 gap-8 text-center">
-              <div className="bg-black/20 p-8 rounded-2xl">
-                <span className="text-sm text-[#fdc879] font-bold block mb-2">곡 A</span>
-                <h4 className="text-3xl md:text-4xl font-black">{current.songA.title}</h4>
-                <p className="text-base text-white/80 mt-2">{current.songA.artist}</p>
+
+            {/* 2곡 분할 카드 */}
+            <div className="grid md:grid-cols-2 gap-5 mt-6 text-left">
+              <div className="bg-[#fdf4e8] p-6 rounded-2xl border border-[#fdc879] shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-black text-[#076327] uppercase mb-2">
+                    <Disc3 className="w-4 h-4 text-[#cb000b]" /> 곡 A
+                  </div>
+                  <h4 className="text-2xl md:text-3xl font-black text-[#cb000b] break-keep leading-snug">
+                    {current.songA.title}
+                  </h4>
+                </div>
+                <p className="text-xs font-bold text-gray-500 mt-4 border-t border-[#fdc879]/40 pt-2">
+                  {current.songA.artist}
+                </p>
               </div>
-              <div className="bg-black/20 p-8 rounded-2xl">
-                <span className="text-sm text-[#fdc879] font-bold block mb-2">곡 B</span>
-                <h4 className="text-3xl md:text-4xl font-black">{current.songB.title}</h4>
-                <p className="text-base text-white/80 mt-2">{current.songB.artist}</p>
+
+              <div className="bg-[#fdf4e8] p-6 rounded-2xl border border-[#fdc879] shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-black text-[#076327] uppercase mb-2">
+                    <Disc3 className="w-4 h-4 text-[#076327]" /> 곡 B
+                  </div>
+                  <h4 className="text-2xl md:text-3xl font-black text-[#076327] break-keep leading-snug">
+                    {current.songB.title}
+                  </h4>
+                </div>
+                <p className="text-xs font-bold text-gray-500 mt-4 border-t border-[#fdc879]/40 pt-2">
+                  {current.songB.artist}
+                </p>
               </div>
             </div>
           </div>
