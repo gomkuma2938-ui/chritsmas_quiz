@@ -48,16 +48,16 @@ export default function App() {
         backgroundImage: `url(${bgImageUrl})`
       }}
     >
-      {/* 상단 헤더 */}
-      <header className="relative z-20 w-full px-6 py-3.5 flex justify-between items-start select-none">
-        {/* 좌측: 탭 메뉴 */}
-        <nav className="flex items-center gap-2 bg-[#fdf4e8]/95 backdrop-blur-md p-1.5 rounded-2xl border-2 border-[#fdc879] shadow-md">
+      {/* 상단 헤더: 좌/우 여백 확보 */}
+      <header className="relative z-30 w-full px-8 py-4 flex justify-between items-start select-none">
+        {/* 좌측 탭 메뉴 (플랫 단색 디자인) */}
+        <nav className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-[#fdc879]">
           <button
             onClick={() => setActiveTab('nonsense')}
-            className={`px-4 py-2 rounded-xl text-sm font-black transition-all flex items-center gap-1.5 ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
               activeTab === 'nonsense'
-                ? 'bg-[#cb000b] text-[#fdf4e8] shadow-md'
-                : 'text-gray-700 hover:text-[#cb000b] hover:bg-[#feefde]'
+                ? 'bg-[#cb000b] text-white shadow-sm'
+                : 'text-gray-600 hover:text-[#cb000b] hover:bg-[#feefde]'
             }`}
           >
             <ImageIcon className="w-4 h-4" /> 그림 넌센스
@@ -65,10 +65,10 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('audio')}
-            className={`px-4 py-2 rounded-xl text-sm font-black transition-all flex items-center gap-1.5 ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
               activeTab === 'audio'
-                ? 'bg-[#cb000b] text-[#fdf4e8] shadow-md'
-                : 'text-gray-700 hover:text-[#cb000b] hover:bg-[#feefde]'
+                ? 'bg-[#cb000b] text-white shadow-sm'
+                : 'text-gray-600 hover:text-[#cb000b] hover:bg-[#feefde]'
             }`}
           >
             <Music className="w-4 h-4" /> 찬양 동시듣기
@@ -76,23 +76,23 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('prizes')}
-            className={`px-4 py-2 rounded-xl text-sm font-black transition-all flex items-center gap-1.5 ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
               activeTab === 'prizes'
-                ? 'bg-[#076327] text-[#fdf4e8] shadow-md'
-                : 'text-gray-700 hover:text-[#076327] hover:bg-[#feefde]'
+                ? 'bg-[#076327] text-white shadow-sm'
+                : 'text-gray-600 hover:text-[#076327] hover:bg-[#feefde]'
             }`}
           >
             <Gift className="w-4 h-4" /> 선물 뽑기판
           </button>
         </nav>
 
-        {/* 우측: 리셋 + 전체화면 + BGM */}
+        {/* 우측 컨트롤 */}
         <div className="flex items-center gap-2">
           {activeTab === 'prizes' && (
             <button
               onClick={handleResetPrizeBoard}
-              className="p-2.5 bg-white/95 hover:bg-[#feefde] border-2 border-[#cb000b] text-[#cb000b] rounded-2xl shadow-md transition-all flex items-center justify-center hover:rotate-[-45deg]"
-              title="1~23번 뽑기판 초기화 (판 리셋)"
+              className="p-2.5 bg-white hover:bg-[#feefde] text-[#cb000b] rounded-2xl shadow-sm border border-red-200 transition-all flex items-center justify-center"
+              title="1~23번 뽑기판 초기화"
             >
               <RotateCcw className="w-5 h-5" />
             </button>
@@ -100,7 +100,7 @@ export default function App() {
 
           <button
             onClick={toggleFullscreen}
-            className="p-2.5 bg-white/95 hover:bg-[#feefde] border-2 border-[#fdab23] text-[#cb000b] rounded-2xl shadow-md transition-all flex items-center justify-center"
+            className="p-2.5 bg-white hover:bg-[#feefde] text-gray-700 rounded-2xl shadow-sm border border-[#fdc879] transition-all flex items-center justify-center"
             title={isFullscreen ? "전체화면 종료" : "전체화면 (PPT 모드)"}
           >
             {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
@@ -115,14 +115,18 @@ export default function App() {
         </div>
       </header>
 
-      {/* 중앙 메인 컨텐츠 */}
-      <main className="relative z-10 w-full max-w-[1700px] mx-auto px-6 md:px-12 pt-6 pb-6 flex-grow flex flex-col justify-between items-center">
+      {/* 
+        중앙 메인 컨텐츠 영역:
+        상단 리스/배너를 침범하지 않도록 pt-24 md:pt-32 여백을 주어 
+        자연스럽게 체크무늬 구역으로 내려앉게 조정
+      */}
+      <main className="relative z-10 w-full max-w-[1750px] mx-auto px-6 md:px-12 pt-24 md:pt-32 pb-8 flex-grow flex flex-col justify-center items-center">
         {activeTab === 'nonsense' && <ImageNonsenseQuiz />}
         {activeTab === 'audio' && <DualAudioQuiz />}
         {activeTab === 'prizes' && <PrizeBoard key={prizeResetKey} />}
       </main>
 
-      <footer className="relative z-10 py-1 text-center text-[11px] text-[#cb000b]/80 font-bold">
+      <footer className="relative z-10 py-1 text-center text-xs text-[#cb000b]/70 font-semibold select-none">
         🎄 성탄 축하 레크리에이션
       </footer>
     </div>
