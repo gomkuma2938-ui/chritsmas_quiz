@@ -29,7 +29,7 @@ export default function PrizeBoard() {
   };
 
   return (
-    <div className="flex flex-col h-full justify-center items-center w-full max-w-[1650px] mx-auto py-2 select-none">
+    <div className="flex flex-col justify-center items-center w-full max-w-[1550px] mx-auto select-none">
       <style>{`
         .perspective-1000 { perspective: 1000px; }
         .transform-style-3d { transform-style: preserve-3d; }
@@ -37,37 +37,34 @@ export default function PrizeBoard() {
         .rotate-y-180 { transform: rotateY(180deg); }
       `}</style>
 
-      {/* 23개 번호 카드 그리드 */}
-      <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-4 md:gap-5 my-auto">
+      {/* 23개 카드 그리드 (그라데이션 없이 플랫한 솔리드 레드/크림) */}
+      <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-4 md:gap-5">
         {INITIAL_PRIZES.map((prize, idx) => {
           const isFlipped = !!openedCards[idx];
           return (
             <div
               key={idx}
               onClick={() => handleCardClick(idx)}
-              className="h-32 md:h-36 lg:h-40 perspective-1000 cursor-pointer group"
+              className="h-28 md:h-32 lg:h-36 perspective-1000 cursor-pointer group"
             >
               <div
-                className={`relative w-full h-full duration-500 transform-style-3d transition-transform rounded-3xl ${
+                className={`relative w-full h-full duration-500 transform-style-3d transition-transform rounded-2xl ${
                   isFlipped ? 'rotate-y-180' : ''
                 }`}
               >
-                {/* 
-                  카드 앞면:
-                  'OPEN' 텍스트를 제거하고 큼직한 번호만 심플하게 배치
-                */}
-                <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-[#cb000b] to-[#fa4134] group-hover:from-[#fa4134] group-hover:to-[#cb000b] rounded-3xl border-4 border-[#fdc879] shadow-xl flex items-center justify-center backface-hidden">
-                  <span className="text-5xl md:text-6xl lg:text-7xl font-black text-[#fdf4e8] drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)]">
+                {/* 카드 앞면: 플랫 솔리드 레드 + 흰색 텍스트 */}
+                <div className="absolute inset-0 w-full h-full bg-[#cb000b] hover:bg-[#fa4134] rounded-2xl shadow-md flex items-center justify-center backface-hidden transition-colors">
+                  <span className="text-4xl md:text-5xl lg:text-6xl font-black text-white">
                     {idx + 1}
                   </span>
                 </div>
 
-                {/* 카드 뒷면: 뒤집힌 후 본체 자리 */}
-                <div className="absolute inset-0 w-full h-full bg-[#fdf4e8] text-[#cb000b] rounded-3xl border-4 border-[#fdab23] p-3 flex flex-col items-center justify-center text-center backface-hidden rotate-y-180 shadow-2xl">
-                  <span className="text-xs text-[#076327] font-black mb-1 bg-[#feefde] px-2.5 py-0.5 rounded-md border border-[#fdc879]">
+                {/* 카드 뒷면: 플랫 소프트 크림 + 딥레드 텍스트 */}
+                <div className="absolute inset-0 w-full h-full bg-[#fdf4e8] text-[#cb000b] rounded-2xl border-2 border-[#fdab23] p-3 flex flex-col items-center justify-center text-center backface-hidden rotate-y-180 shadow-md">
+                  <span className="text-[11px] text-[#076327] font-bold mb-1 bg-white px-2 py-0.5 rounded border border-[#fdc879]">
                     NO. {idx + 1}
                   </span>
-                  <div className="text-base md:text-lg lg:text-xl font-black leading-snug break-keep text-[#cb000b] line-clamp-2">
+                  <div className="text-sm md:text-base font-black leading-snug break-keep text-[#cb000b] line-clamp-2">
                     {prize}
                   </div>
                 </div>
@@ -78,43 +75,36 @@ export default function PrizeBoard() {
       </div>
 
       {/* 
-        ============================================================
-        🎁 번호 클릭 시 나타나는 특대형 선물 팝업
-        (설명 문구 제거, 닫기 버튼 및 바깥 클릭으로 즉시 닫힘)
-        ============================================================
+        🎁 특대형 선물 팝업
+        - 중복되던 '확인' 버튼 완전 삭제!
+        - 우측 상단 'X' 버튼 하나와 바깥 클릭만으로 닫힘
       */}
       {zoomedIndex !== null && (
         <div 
           onClick={() => setZoomedIndex(null)}
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in cursor-pointer"
         >
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="bg-[#fdf4e8] border-8 border-[#fdab23] rounded-3xl p-10 md:p-16 max-w-3xl w-full text-center shadow-2xl relative cursor-default transform animate-fade-in"
+            className="bg-[#fdf4e8] border border-[#fdab23] rounded-3xl p-10 md:p-14 max-w-2xl w-full text-center shadow-2xl relative cursor-default"
           >
+            {/* 닫기 X 버튼 단독 유지 */}
             <button 
               onClick={() => setZoomedIndex(null)}
-              className="absolute top-6 right-6 text-[#cb000b] hover:bg-[#feefde] p-2 rounded-full transition-all"
+              className="absolute top-5 right-5 text-gray-500 hover:text-black p-2 rounded-full transition-all"
             >
-              <X className="w-9 h-9" />
+              <X className="w-8 h-8" />
             </button>
 
             {/* 번호 뱃지 */}
-            <div className="inline-block bg-[#076327] text-[#fdf4e8] font-black text-xl md:text-2xl px-7 py-2.5 rounded-2xl shadow-md mb-8 border-2 border-[#fdc879]">
-              🎁 NO. {zoomedIndex + 1} 번 선물 발표
+            <div className="inline-block bg-[#076327] text-white font-bold text-lg md:text-xl px-6 py-2 rounded-xl shadow-sm mb-6">
+              🎁 NO. {zoomedIndex + 1} 번 선물
             </div>
 
             {/* 특대형 선물 텍스트 */}
-            <div className="text-5xl md:text-6xl lg:text-7xl font-black text-[#cb000b] my-8 leading-tight break-keep drop-shadow-sm">
+            <div className="text-4xl md:text-5xl lg:text-6xl font-black text-[#cb000b] my-6 leading-tight break-keep">
               {INITIAL_PRIZES[zoomedIndex]}
             </div>
-
-            <button
-              onClick={() => setZoomedIndex(null)}
-              className="mt-6 px-12 py-4 bg-[#cb000b] hover:bg-[#fa4134] text-[#fdf4e8] font-black text-2xl rounded-2xl shadow-xl transition-all transform hover:scale-105 active:scale-95 border-2 border-[#fdc879]"
-            >
-              확 인
-            </button>
           </div>
         </div>
       )}
