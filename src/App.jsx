@@ -115,12 +115,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* 
-        중앙 메인 컨텐츠 영역:
-        상단 리스/배너를 침범하지 않도록 pt-24 md:pt-32 여백을 주어 
-        자연스럽게 체크무늬 구역으로 내려앉게 조정
-      */}
-      <main className="relative z-10 w-full max-w-[1750px] mx-auto px-6 md:px-12 pt-24 md:pt-32 pb-8 flex-grow flex flex-col justify-center items-center">
+      {/* 중앙 메인 컨텐츠: 상단 리스 바로 밑(pt-24)부터 시작해 아래까지 꽉 채움 */}
+      <main className="relative z-10 w-full px-4 md:px-8 pt-24 pb-4 flex-grow flex flex-col justify-center items-center">
         {activeTab === 'nonsense' && <ImageNonsenseQuiz />}
         {activeTab === 'audio' && <DualAudioQuiz />}
         {activeTab === 'prizes' && <PrizeBoard key={prizeResetKey} />}
