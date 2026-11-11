@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["master"] # 기본 브랜치가 master라면 master로 변경
+    branches: ["main"] # 기본 브랜치가 master라면 master로 변경
   workflow_dispatch:
 
 permissions:
