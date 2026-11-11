@@ -5,7 +5,7 @@ import { NONSENSE_QUIZZES } from '../data/quizData';
 
 export default function ImageNonsenseQuiz() {
   const [index, setIndex] = useState(0);
-  const [activeModal, setActiveModal] = useState(null); // 'hint' | 'answer' | null
+  const [activeModal, setActiveModal] = useState(null);
 
   const current = NONSENSE_QUIZZES[index];
 
@@ -20,87 +20,92 @@ export default function ImageNonsenseQuiz() {
   };
 
   return (
-    <div className="flex flex-col justify-center items-center w-full max-w-[1700px] mx-auto relative select-none">
+    <div className="w-full flex justify-center items-center relative select-none">
       
-      {/* [문제 1 / 8] 배지: 카드 좌측 상단 위에 단정하게 안착 */}
-      <div className="w-full max-w-[1450px] flex justify-start mb-2 px-2">
-        <span className="bg-[#cb000b] text-white font-black px-5 py-1.5 rounded-xl text-lg shadow-sm">
+      {/* 
+        1. [문제 1 / 8] 위치:
+        카드에 붙이지 않고, 화면 좌측 상단 [그림 넌센스] 탭 바로 아래에 완전히 고정
+      */}
+      <div className="fixed top-[74px] left-8 z-40">
+        <span className="bg-[#cb000b] text-white font-black px-6 py-2 rounded-xl text-lg shadow-md">
           문제 {index + 1} / {NONSENSE_QUIZZES.length}
         </span>
       </div>
 
-      {/* 메인 영역: [대형 이전 버튼] + [넓은 카드] + [대형 다음 버튼] */}
-      <div className="w-full flex items-center justify-center gap-6 md:gap-8">
+      {/* 
+        2. 이전/다음 화살표 (< >):
+        카드를 양옆에서 쥐어짜지 않도록 화면 양 끝에 띄워서 배치
+      */}
+      <button
+        onClick={handlePrev}
+        className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-20 h-20 md:w-24 md:h-24 bg-white/95 hover:bg-[#feefde] text-[#cb000b] rounded-full flex items-center justify-center shadow-2xl transition-all transform hover:scale-105 active:scale-95"
+        title="이전 문제"
+      >
+        <ChevronLeft className="w-12 h-12 stroke-[3]" />
+      </button>
+
+      <button
+        onClick={handleNext}
+        className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-20 h-20 md:w-24 md:h-24 bg-[#076327] hover:bg-[#239b48] text-white rounded-full flex items-center justify-center shadow-2xl transition-all transform hover:scale-105 active:scale-95"
+        title="다음 문제"
+      >
+        <ChevronRight className="w-12 h-12 stroke-[3]" />
+      </button>
+
+      {/* 
+        3. 초대형 문제 카드:
+        - 가로: w-[90vw] max-w-[1650px]로 꽉 차게 확장
+        - 높이: h-[720px]로 늘려 위아래 휑하던 여백 완전히 채움
+        - 패딩: p-10 md:p-12로 넉넉하게 확보
+      */}
+      <div className="w-[90vw] max-w-[1650px] h-[720px] bg-white/95 backdrop-blur-md rounded-3xl p-10 md:p-12 shadow-2xl border border-[#fdc879] flex flex-col items-center justify-between text-center">
         
-        {/* 특대형 이전 버튼 (<) - 그라데이션/보더 없이 깔끔한 솔리드 */}
-        <button
-          onClick={handlePrev}
-          className="w-20 h-20 md:w-24 md:h-24 bg-white hover:bg-[#feefde] text-[#cb000b] rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-105 active:scale-95 flex-shrink-0"
-          title="이전 문제"
-        >
-          <ChevronLeft className="w-12 h-12 stroke-[3]" />
-        </button>
+        {/* 문제 텍스트 */}
+        <h3 className="text-5xl md:text-6xl font-black text-[#cb000b] leading-tight pt-2">
+          {current.q}
+        </h3>
 
         {/* 
-          가로폭 대폭 확장(max-w-[1450px]), 
-          내부 패딩 대폭 추가(p-10 md:p-12),
-          단정하고 모던한 카드 디자인
+          문제 그림 박스:
+          세로 공간(h-[440px])을 꽉 채워 그림이 아주 큼직하게 보이도록 확대
         */}
-        <div className="w-full max-w-[1450px] bg-white/95 backdrop-blur-md rounded-3xl p-10 md:p-12 shadow-xl border border-[#fdc879] flex flex-col items-center justify-between min-h-[580px] max-h-[640px] text-center">
-          
-          {/* 문제 텍스트 */}
-          <h3 className="text-4xl md:text-5xl lg:text-6xl font-black text-[#cb000b] leading-tight">
-            {current.q}
-          </h3>
-
-          {/* 문제 그림 영역 (넉넉한 크기) */}
-          <div className="w-full max-w-4xl h-72 md:h-80 rounded-2xl my-4 bg-[#fdf4e8] flex items-center justify-center overflow-hidden p-4">
-            {current.image ? (
-              <img 
-                src={current.image} 
-                alt={`문제 ${current.id}`} 
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextSibling.style.display = 'flex';
-                }}
-              />
-            ) : null}
-            <div className="hidden flex-col items-center justify-center text-gray-400 gap-2">
-              <ImageIcon className="w-16 h-16 stroke-1" />
-              <span className="text-base font-semibold text-gray-400">지정된 문제 그림이 없습니다.</span>
-            </div>
-          </div>
-
-          {/* 하단 플랫 버튼 (그라데이션 X, 보더 X, 단색 O) */}
-          <div className="flex items-center gap-4 mt-2">
-            <button
-              onClick={() => setActiveModal('hint')}
-              className="px-8 py-3.5 bg-[#fdab23] hover:bg-[#ffa52c] text-white rounded-2xl text-lg font-bold flex items-center gap-2 shadow-sm transition-all transform hover:scale-105 active:scale-95"
-            >
-              <HelpCircle className="w-5 h-5" /> 힌트 보기
-            </button>
-
-            <button
-              onClick={() => setActiveModal('answer')}
-              className="px-10 py-3.5 bg-[#cb000b] hover:bg-[#fa4134] text-white font-black text-xl rounded-2xl shadow-sm transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2"
-            >
-              <Eye className="w-6 h-6" /> 정답 공개
-            </button>
+        <div className="flex-1 w-full max-w-5xl h-[440px] my-4 rounded-2xl bg-[#fdf4e8] flex items-center justify-center overflow-hidden p-4">
+          {current.image ? (
+            <img 
+              src={current.image} 
+              alt={`문제 ${current.id}`} 
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div className="hidden flex-col items-center justify-center text-gray-400 gap-3">
+            <ImageIcon className="w-20 h-20 stroke-1" />
+            <span className="text-xl font-bold text-gray-400">지정된 문제 그림이 없습니다.</span>
           </div>
         </div>
 
-        {/* 특대형 다음 버튼 (>) */}
-        <button
-          onClick={handleNext}
-          className="w-20 h-20 md:w-24 md:h-24 bg-[#076327] hover:bg-[#239b48] text-white rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-105 active:scale-95 flex-shrink-0"
-          title="다음 문제"
-        >
-          <ChevronRight className="w-12 h-12 stroke-[3]" />
-        </button>
+        {/* 하단 버튼 (그라데이션 X, 보더 X, 플랫 솔리드) */}
+        <div className="flex items-center gap-5 pb-2">
+          <button
+            onClick={() => setActiveModal('hint')}
+            className="px-10 py-4 bg-[#fdab23] hover:bg-[#ffa52c] text-white rounded-2xl text-xl font-bold flex items-center gap-2.5 shadow-md transition-all active:scale-95"
+          >
+            <HelpCircle className="w-6 h-6" /> 힌트 보기
+          </button>
+
+          <button
+            onClick={() => setActiveModal('answer')}
+            className="px-12 py-4 bg-[#cb000b] hover:bg-[#fa4134] text-white font-black text-2xl rounded-2xl shadow-md transition-all active:scale-95 flex items-center gap-2.5"
+          >
+            <Eye className="w-7 h-7" /> 정답 공개
+          </button>
+        </div>
       </div>
 
-      {/* 💡 힌트 모달 (사족 텍스트 없음, 깔끔한 X 닫기) */}
+      {/* 💡 힌트 모달 */}
       {activeModal === 'hint' && (
         <div 
           onClick={() => setActiveModal(null)}
@@ -108,18 +113,18 @@ export default function ImageNonsenseQuiz() {
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#fdf4e8] rounded-3xl p-10 md:p-12 max-w-2xl w-full text-center shadow-2xl relative cursor-default border border-[#fdc879]"
+            className="bg-[#fdf4e8] rounded-3xl p-12 max-w-3xl w-full text-center shadow-2xl relative cursor-default border border-[#fdc879]"
           >
             <button 
               onClick={() => setActiveModal(null)}
               className="absolute top-5 right-5 text-gray-500 hover:text-black p-2 rounded-full transition-all"
             >
-              <X className="w-7 h-7" />
+              <X className="w-8 h-8" />
             </button>
-            <span className="text-lg font-bold text-[#076327] bg-white px-5 py-1.5 rounded-xl inline-block mb-4 shadow-sm border border-[#fdc879]">
+            <span className="text-xl font-bold text-[#076327] bg-white px-6 py-2 rounded-xl inline-block mb-6 shadow-sm border border-[#fdc879]">
               💡 힌트
             </span>
-            <div className="text-3xl md:text-4xl font-black text-[#cb000b] my-4 leading-snug break-keep">
+            <div className="text-4xl md:text-5xl font-black text-[#cb000b] my-4 leading-relaxed break-keep">
               {current.hint}
             </div>
           </div>
@@ -134,18 +139,18 @@ export default function ImageNonsenseQuiz() {
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#cb000b] rounded-3xl p-10 md:p-14 max-w-2xl w-full text-center shadow-2xl relative cursor-default text-white"
+            className="bg-[#cb000b] rounded-3xl p-12 max-w-3xl w-full text-center shadow-2xl relative cursor-default text-white"
           >
             <button 
               onClick={() => setActiveModal(null)}
               className="absolute top-5 right-5 text-white/80 hover:text-white p-2 rounded-full transition-all"
             >
-              <X className="w-7 h-7" />
+              <X className="w-8 h-8" />
             </button>
-            <span className="text-sm font-black uppercase tracking-widest text-[#fdc879] block mb-2">
+            <span className="text-base font-black uppercase tracking-widest text-[#fdc879] block mb-2">
               정 답
             </span>
-            <div className="text-5xl md:text-7xl font-black my-4">
+            <div className="text-6xl md:text-8xl font-black my-4">
               {current.a}
             </div>
           </div>
