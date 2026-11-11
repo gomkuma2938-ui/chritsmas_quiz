@@ -1,6 +1,5 @@
 // src/components/PrizeBoard.jsx
 import React, { useState } from 'react';
-import { Gift, RotateCcw } from 'lucide-react';
 import { INITIAL_PRIZES } from '../data/quizData';
 
 export default function PrizeBoard() {
@@ -13,31 +12,27 @@ export default function PrizeBoard() {
     }
   });
 
-  const toggleCard = (idx) => {
-    setOpenedCards((prev) => {
-      const updated = { ...prev, [idx]: !prev[idx] };
+  // 현재 대형 팝업으로 확대되어 보이는 카드 번호 (null이면 팝업 닫힘)
+  const [zoomedIndex, setZoomedIndex] = useState(null);
+
+  // 번호 카드 클릭 핸들러
+  const handleCardClick = (idx) => {
+    // 1. 해당 카드를 뒤집힌 상태로 저장
+    if (!openedCards[idx]) {
+      const updated = { ...openedCards, [idx]: true };
+      setOpenedCards(updated);
       try {
         localStorage.setItem('christmas_gift_board_state', JSON.stringify(updated));
       } catch (e) {
         console.error("LocalStorage Save Error", e);
       }
-      return updated;
-    });
-  };
-
-  const resetBoard = () => {
-    if (window.confirm("정말로 1~23번 뽑기판을 전부 초기화하시겠습니까?")) {
-      setOpenedCards({});
-      try {
-        localStorage.removeItem('christmas_gift_board_state');
-      } catch (e) {
-        console.error("LocalStorage Clear Error", e);
-      }
     }
+    // 2. 화면 전체에 대형 팝업 띄우기
+    setZoomedIndex(idx);
   };
 
   return (
-    <div className="flex flex-col h-full justify-between items-center space-y-4 w-full max-w-[1550px] mx-auto">
+    <div className="flex flex-col h-full justify-center items-center w-full max-w-[1600px] mx-auto py-2">
       <style>{`
         .perspective-1000 { perspective: 1000px; }
         .transform-style-3d { transform-style: preserve-3d; }
@@ -45,30 +40,17 @@ export default function PrizeBoard() {
         .rotate-y-180 { transform: rotateY(180deg); }
       `}</style>
 
-      {/* 상단 헤더 바 */}
-      <div className="w-full flex justify-between items-center bg-white/95 backdrop-blur-md px-6 py-3.5 rounded-2xl border-3 border-red-300 shadow-md text-gray-800">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-black text-red-700 flex items-center gap-2">
-            <Gift className="w-8 h-8 text-amber-500" /> 🎁 1~23번 행운의 성탄 선물 뽑기판
-          </h2>
-          <p className="text-sm font-bold text-gray-600 mt-0.5">카드를 클릭하면 3D로 회전하며 숨겨진 선물이 나타납니다.</p>
-        </div>
-        <button
-          onClick={resetBoard}
-          className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-black rounded-xl flex items-center gap-2 shadow-md transition-all transform hover:scale-105 active:scale-95"
-        >
-          <RotateCcw className="w-5 h-5" /> 판 리셋 (초기화)
-        </button>
-      </div>
-
-      {/* 23개 대형 카드 그리드 (6열 배치로 스크롤 없이 시원하게) */}
-      <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-4 md:gap-5 my-2">
+      {/* 
+        상단/하단 안내 문구 전체 삭제 완료! 
+        화면 전체를 시원하게 23개 대형 카드로 가득 채움
+      */}
+      <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-4 md:gap-5 my-auto">
         {INITIAL_PRIZES.map((prize, idx) => {
           const isFlipped = !!openedCards[idx];
           return (
             <div
               key={idx}
-              onClick={() => toggleCard(idx)}
+              onClick={() => handleCardClick(idx)}
               className="h-32 md:h-36 lg:h-40 perspective-1000 cursor-pointer group"
             >
               <div
@@ -86,12 +68,12 @@ export default function PrizeBoard() {
                   </span>
                 </div>
 
-                {/* 카드 뒷면 (선물 내용) */}
-                <div className="absolute inset-0 w-full h-full bg-amber-50 text-red-950 rounded-3xl border-4 border-amber-400 p-3 flex flex-col items-center justify-center text-center backface-hidden rotate-y-180 shadow-2xl">
-                  <span className="text-xs text-red-600 font-black mb-1 bg-amber-200/80 px-2.5 py-0.5 rounded-md">
+                {/* 카드 뒷면 (제자리에 뒤집힌 상태) */}
+                <div className="absolute inset-0 w-full h-full bg-amber-50 text-red-950 rounded-3xl border-4 border-amber-400 p-2.5 flex flex-col items-center justify-center text-center backface-hidden rotate-y-180 shadow-2xl">
+                  <span className="text-[11px] text-red-600 font-black mb-1 bg-amber-200/80 px-2.5 py-0.5 rounded-md">
                     NO. {idx + 1}
                   </span>
-                  <div className="text-lg md:text-xl lg:text-2xl font-black leading-snug break-keep text-red-900 drop-shadow-sm">
+                  <div className="text-base md:text-lg lg:text-xl font-black leading-snug break-keep text-red-900 line-clamp-2">
                     {prize}
                   </div>
                 </div>
@@ -101,9 +83,44 @@ export default function PrizeBoard() {
         })}
       </div>
 
-      <div className="text-sm font-black text-amber-900 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full border border-amber-300 shadow-sm">
-        💡 카드를 클릭하면 뒤집히고 상태는 자동 저장됩니다. [판 리셋]을 누르면 모든 카드가 다시 닫힙니다.
-      </div>
+      {/* 
+        ============================================================
+        🎉 번호 클릭 시 나타나는 [특대형 팝업 연출]
+        카드 외 바깥 어두운 배경(오버레이)을 누르면 닫힙니다.
+        ============================================================
+      */}
+      {zoomedIndex !== null && (
+        <div 
+          onClick={() => setZoomedIndex(null)}
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="bg-gradient-to-b from-amber-50 via-white to-amber-100 border-8 border-yellow-400 rounded-3xl p-10 md:p-16 max-w-3xl w-full text-center shadow-[0_25px_60px_rgba(0,0,0,0.6)] transform animate-fade-in relative cursor-default"
+          >
+            {/* 번호 뱃지 */}
+            <div className="inline-block bg-red-600 text-yellow-300 font-black text-xl md:text-2xl px-6 py-2 rounded-2xl shadow-md mb-6 border-2 border-yellow-300">
+              🎁 NO. {zoomedIndex + 1} 번 선물 공개!
+            </div>
+
+            {/* 특대형 선물 텍스트 */}
+            <div className="text-5xl md:text-6xl lg:text-7xl font-black text-red-900 my-8 leading-tight break-keep drop-shadow-sm">
+              {INITIAL_PRIZES[zoomedIndex]}
+            </div>
+
+            <p className="text-sm font-bold text-gray-500 mb-8">
+              (카드 바깥이나 아래 닫기 버튼을 누르면 원래 자리로 돌아갑니다)
+            </p>
+
+            <button
+              onClick={() => setZoomedIndex(null)}
+              className="px-10 py-4 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-black text-xl rounded-2xl shadow-xl transition-all transform hover:scale-105 active:scale-95 border-2 border-yellow-300"
+            >
+              확인 및 닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
