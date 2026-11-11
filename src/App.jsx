@@ -100,12 +100,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* 
-        중앙 메인 컨텐츠 영역: 
-        배경의 체크무늬 밴드 위에 자연스럽게 얹어지며, 
-        하단 양쪽 코너(선물박스/꽃)를 침범하지 않도록 px-12 pb-10 여백 부여
-      */}
-      <main className="relative z-10 max-w-5xl mx-auto px-6 md:px-12 pt-2 pb-12 flex-grow w-full flex flex-col justify-center items-center">
+      {/* 중앙 메인 컨텐츠 영역: 와이드 16:9 화면에 맞게 1650px로 광폭 확장 */}
+      <main className="relative z-10 w-full max-w-[1650px] mx-auto px-4 md:px-8 pt-2 pb-10 flex-grow flex flex-col justify-center items-center">
         {activeTab === 'nonsense' && <ImageNonsenseQuiz />}
         {activeTab === 'audio' && <DualAudioQuiz />}
         {activeTab === 'prizes' && <PrizeBoard />}
