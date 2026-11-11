@@ -1,6 +1,6 @@
 // src/components/ImageNonsenseQuiz.jsx
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, HelpCircle, Eye, X, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, HelpCircle, Eye, X, Lightbulb, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { NONSENSE_QUIZZES } from '../data/quizData';
 
 export default function ImageNonsenseQuiz({ index, setIndex }) {
@@ -20,7 +20,7 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
   return (
     <div className="w-full flex items-center justify-center gap-5 select-none">
       
-      {/* 이전 화살표: 흰색 배경 + 레드 아이콘 */}
+      {/* 이전 화살표 */}
       <button
         onClick={handlePrev}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#cb000b] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
@@ -73,7 +73,7 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
         </div>
       </div>
 
-      {/* 다음 화살표: 이전 화살표와 완벽히 동일한 화이트/레드 디자인 */}
+      {/* 다음 화살표 */}
       <button
         onClick={handleNext}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#cb000b] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
@@ -82,7 +82,10 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
         <ChevronRight className="w-10 h-10 md:w-12 md:h-12 stroke-[3]" />
       </button>
 
-      {/* 힌트 모달 */}
+      {/* 
+        💡 힌트 모달: 
+        상단 Lightbulb 벡터 아이콘 배지 + 이중 프레임(플라크) 레이아웃
+      */}
       {activeModal === 'hint' && (
         <div 
           onClick={() => setActiveModal(null)}
@@ -90,25 +93,38 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#fdf4e8] rounded-3xl p-12 max-w-3xl w-full text-center shadow-2xl relative cursor-default border border-[#fdc879]"
+            className="bg-white rounded-3xl p-8 md:p-12 max-w-2xl w-full text-center shadow-2xl relative cursor-default border-2 border-[#fdab23]"
           >
             <button 
               onClick={() => setActiveModal(null)}
-              className="absolute top-5 right-5 text-gray-500 hover:text-black p-2 rounded-full transition-all"
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 p-2 rounded-full transition-all"
             >
-              <X className="w-8 h-8" />
+              <X className="w-7 h-7" />
             </button>
-            <span className="text-xl font-bold text-[#076327] bg-white px-6 py-2 rounded-xl inline-block mb-6 shadow-sm border border-[#fdc879]">
-              💡 힌트
+
+            {/* 아이콘 상단 심볼 */}
+            <div className="w-16 h-16 mx-auto mb-3 bg-[#feefde] rounded-2xl border border-[#fdc879] flex items-center justify-center text-[#fdab23] shadow-sm">
+              <Lightbulb className="w-9 h-9 stroke-[2.2]" />
+            </div>
+
+            <span className="text-xs font-black tracking-widest text-[#076327] uppercase bg-[#feefde] px-4 py-1 rounded-full border border-[#fdc879]/60">
+              QUESTION HINT
             </span>
-            <div className="text-4xl md:text-5xl font-black text-[#cb000b] my-4 leading-relaxed break-keep">
-              {current.hint}
+
+            {/* 힌트 본문 플라크 */}
+            <div className="mt-6 bg-[#fdf4e8] rounded-2xl p-6 md:p-8 border border-[#fdc879]/50 shadow-inner">
+              <p className="text-3xl md:text-4xl font-black text-[#cb000b] leading-relaxed break-keep">
+                {current.hint}
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* 정답 모달 */}
+      {/* 
+        🎉 정답 모달: 
+        상단 Sparkles 축하 배지 + 정답 카드 프레임 레이아웃
+      */}
       {activeModal === 'answer' && (
         <div 
           onClick={() => setActiveModal(null)}
@@ -116,19 +132,29 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#cb000b] rounded-3xl p-12 max-w-3xl w-full text-center shadow-2xl relative cursor-default text-white"
+            className="bg-white rounded-3xl p-8 md:p-12 max-w-2xl w-full text-center shadow-2xl relative cursor-default border-2 border-[#cb000b]"
           >
             <button 
               onClick={() => setActiveModal(null)}
-              className="absolute top-5 right-5 text-white/80 hover:text-white p-2 rounded-full transition-all"
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 p-2 rounded-full transition-all"
             >
-              <X className="w-8 h-8" />
+              <X className="w-7 h-7" />
             </button>
-            <span className="text-base font-black uppercase tracking-widest text-[#fdc879] block mb-2">
-              정 답
+
+            {/* 아이콘 상단 심볼 */}
+            <div className="w-16 h-16 mx-auto mb-3 bg-[#cb000b] rounded-2xl flex items-center justify-center text-[#fdc879] shadow-md">
+              <Sparkles className="w-9 h-9 stroke-[2.2]" />
+            </div>
+
+            <span className="text-xs font-black tracking-widest text-[#cb000b] uppercase bg-[#feefde] px-4 py-1 rounded-full border border-[#cb000b]/20">
+              CORRECT ANSWER
             </span>
-            <div className="text-6xl md:text-8xl font-black my-4">
-              {current.a}
+
+            {/* 정답 텍스트 플라크 */}
+            <div className="mt-6 bg-[#fdf4e8] rounded-2xl p-6 md:p-8 border border-[#fdc879] shadow-inner">
+              <p className="text-5xl md:text-7xl font-black text-[#cb000b] drop-shadow-sm">
+                {current.a}
+              </p>
             </div>
           </div>
         </div>
