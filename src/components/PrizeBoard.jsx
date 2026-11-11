@@ -1,6 +1,6 @@
 // src/components/PrizeBoard.jsx
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Gift } from 'lucide-react';
 import { INITIAL_PRIZES } from '../data/quizData';
 
 export default function PrizeBoard() {
@@ -37,10 +37,7 @@ export default function PrizeBoard() {
         .rotate-y-180 { transform: rotateY(180deg); }
       `}</style>
 
-      {/* 
-        카드 크기를 적정 크기(h-28 md:h-32)로 줄여 
-        체크무늬 영역 안에 딱 들어가게 조정
-      */}
+      {/* 23개 카드 그리드 */}
       <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-3.5 md:gap-4">
         {INITIAL_PRIZES.map((prize, idx) => {
           const isFlipped = !!openedCards[idx];
@@ -62,10 +59,7 @@ export default function PrizeBoard() {
                   </span>
                 </div>
 
-                {/* 
-                  뒷면: NO.2 태그를 완전히 제거하고 
-                  선물 텍스트만 깔끔하게 노출
-                */}
+                {/* 뒷면: 선물 텍스트만 깔끔 노출 */}
                 <div className="absolute inset-0 w-full h-full bg-[#fdf4e8] text-[#cb000b] rounded-2xl border-2 border-[#fdab23] p-3 flex items-center justify-center text-center backface-hidden rotate-y-180 shadow-md">
                   <div className="text-base md:text-lg font-black leading-snug break-keep text-[#cb000b] line-clamp-2">
                     {prize}
@@ -77,7 +71,10 @@ export default function PrizeBoard() {
         })}
       </div>
 
-      {/* 🎁 특대형 선물 모달 */}
+      {/* 
+        🎁 특대형 선물 모달: 
+        상단 Gift 벡터 배지 + 플라크 프레임 레이아웃
+      */}
       {zoomedIndex !== null && (
         <div 
           onClick={() => setZoomedIndex(null)}
@@ -85,17 +82,29 @@ export default function PrizeBoard() {
         >
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="bg-[#fdf4e8] border border-[#fdab23] rounded-3xl p-12 max-w-2xl w-full text-center shadow-2xl relative cursor-default"
+            className="bg-white rounded-3xl p-8 md:p-12 max-w-2xl w-full text-center shadow-2xl relative cursor-default border-2 border-[#fdab23]"
           >
             <button 
               onClick={() => setZoomedIndex(null)}
-              className="absolute top-5 right-5 text-gray-500 hover:text-black p-2 rounded-full transition-all"
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 p-2 rounded-full transition-all"
             >
-              <X className="w-8 h-8" />
+              <X className="w-7 h-7" />
             </button>
 
-            <div className="text-4xl md:text-5xl font-black text-[#cb000b] my-6 leading-tight break-keep">
-              {INITIAL_PRIZES[zoomedIndex]}
+            {/* 선물 심볼 아이콘 */}
+            <div className="w-16 h-16 mx-auto mb-3 bg-[#fdab23] rounded-2xl flex items-center justify-center text-white shadow-md">
+              <Gift className="w-9 h-9 stroke-[2.2]" />
+            </div>
+
+            <span className="text-xs font-black tracking-widest text-[#cb000b] uppercase bg-[#feefde] px-4 py-1 rounded-full border border-[#fdc879]">
+              LUCKY GIFT NO. {zoomedIndex + 1}
+            </span>
+
+            {/* 선물 내용 플라크 */}
+            <div className="mt-6 bg-[#fdf4e8] rounded-2xl p-6 md:p-8 border border-[#fdc879] shadow-inner">
+              <div className="text-4xl md:text-5xl font-black text-[#cb000b] my-2 leading-tight break-keep">
+                {INITIAL_PRIZES[zoomedIndex]}
+              </div>
             </div>
           </div>
         </div>
