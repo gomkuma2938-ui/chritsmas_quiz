@@ -138,9 +138,9 @@ export default function App() {
 
       {/* 
         중앙 메인 컨텐츠:
-        상단 리스를 완전히 피하도록 150px 아래(pt-[150px])로 이동
+        기존 150px에서 70px 올려 pt-[80px]로 최적화
       */}
-      <main className="relative z-10 w-full max-w-[1720px] mx-auto px-6 pt-[150px] pb-6 flex-grow flex flex-col justify-center items-center">
+      <main className="relative z-10 w-full max-w-[1720px] mx-auto px-6 pt-[80px] pb-6 flex-grow flex flex-col justify-center items-center">
         {activeTab === 'nonsense' && (
           <ImageNonsenseQuiz index={nonsenseIndex} setIndex={setNonsenseIndex} />
         )}
