@@ -1,5 +1,5 @@
 // src/components/PrizeBoard.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Gift } from 'lucide-react';
 import { INITIAL_PRIZES } from '../data/quizData';
 
@@ -15,6 +15,7 @@ export default function PrizeBoard() {
 
   const [zoomedIndex, setZoomedIndex] = useState(null);
 
+  // 카드 클릭 시 뒤집기 & 모달 팝업 열기
   const handleCardClick = (idx) => {
     if (!openedCards[idx]) {
       const updated = { ...openedCards, [idx]: true };
@@ -27,6 +28,17 @@ export default function PrizeBoard() {
     }
     setZoomedIndex(idx);
   };
+
+  // ⌨️ ESC 누르면 열린 선물 팝업 즉시 닫기
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setZoomedIndex(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="flex flex-col justify-center items-center w-full max-w-[1320px] mx-auto select-none">
@@ -42,7 +54,7 @@ export default function PrizeBoard() {
         {INITIAL_PRIZES.map((prize, idx) => {
           const isFlipped = !!openedCards[idx];
           
-          {/* 👇 체스판(지그재그) 패턴 공식으로 변경 (6열 기준) */}
+          {/* 체스판(지그재그) 패턴 공식 (6열 기준 유지) */}
           const isEven = (Math.floor(idx / 6) + idx) % 2 === 0;
           const bgClass = isEven ? 'bg-[#cb000b] hover:bg-[#fa4134]' : 'bg-[#15803d] hover:bg-[#16a34a]';
 
@@ -78,7 +90,7 @@ export default function PrizeBoard() {
 
       {/* 
         🎁 특대형 선물 모달: 
-        상단 Gift 벡터 배지 + 플라크 프레임 레이아웃
+        상단 Gift 벡터 배지 + 플라크 프레임 레이아웃 (ESC로 닫기 지원)
       */}
       {zoomedIndex !== null && (
         <div 
