@@ -59,7 +59,7 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
   return (
     <div className="w-full flex items-center justify-center gap-5 select-none">
       
-      {/* 백그라운드 이미지 프리로더 (번쩍임 방지) */}
+      {/* 백그라운드 프리로더 */}
       {current.image && !imgError && (
         <img
           key={current.image}
@@ -89,7 +89,7 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
             <div className="w-full flex items-center justify-center px-4 min-h-[70px] max-h-[140px]">
               <h3 
                 className="text-3xl md:text-4xl lg:text-[42px] font-black text-[#cb000b] break-keep py-1"
-                style={{ lineHeight: 1.6 }}
+                style={{ lineHeight: 1.3 }}
               >
                 {current.q}
               </h3>
@@ -104,11 +104,14 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
             </div>
           </>
         ) : (
-          /* 2. 그림 없는 문제 (캡처에 나온 화면: 줄간격 1.75배로 시원하게 확대) */
+          /* 
+            2. 그림 없는 문제:
+            lineHeight를 1.25로 확실하게 좁혀서 1줄과 2줄 사이 간격을 절반 이하로 압축!
+          */
           <div className="flex-1 w-full flex items-center justify-center px-8 my-auto">
             <h3 
               className="text-5xl md:text-6xl lg:text-[68px] font-black text-[#cb000b] break-keep max-w-5xl drop-shadow-sm"
-              style={{ lineHeight: 1.75 }}
+              style={{ lineHeight: 1.25 }}
             >
               {current.q}
             </h3>
