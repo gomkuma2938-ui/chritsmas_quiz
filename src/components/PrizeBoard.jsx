@@ -41,6 +41,11 @@ export default function PrizeBoard() {
       <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-3.5 md:gap-4">
         {INITIAL_PRIZES.map((prize, idx) => {
           const isFlipped = !!openedCards[idx];
+          
+          {/* 👇 추가된 부분: 짝/홀수 인덱스에 따라 빨강/초록 교차 설정 */}
+          const isEven = idx % 2 === 0;
+          const bgClass = isEven ? 'bg-[#cb000b] hover:bg-[#fa4134]' : 'bg-[#15803d] hover:bg-[#16a34a]';
+
           return (
             <div
               key={idx}
@@ -52,8 +57,8 @@ export default function PrizeBoard() {
                   isFlipped ? 'rotate-y-180' : ''
                 }`}
               >
-                {/* 앞면: 플랫 솔리드 레드 */}
-                <div className="absolute inset-0 w-full h-full bg-[#cb000b] hover:bg-[#fa4134] rounded-2xl shadow-md flex items-center justify-center backface-hidden transition-colors">
+                {/* 앞면: 교차되는 빨강/초록 컬러 적용 */}
+                <div className={`absolute inset-0 w-full h-full ${bgClass} rounded-2xl shadow-md flex items-center justify-center backface-hidden transition-colors`}>
                   <span className="text-4xl md:text-5xl font-black text-white">
                     {idx + 1}
                   </span>
