@@ -1,11 +1,18 @@
 // src/components/ImageNonsenseQuiz.jsx
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, HelpCircle, Eye, X, Lightbulb, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, HelpCircle, Eye, X, Lightbulb, Sparkles } from 'lucide-react';
 import { NONSENSE_QUIZZES } from '../data/quizData';
 
 export default function ImageNonsenseQuiz({ index, setIndex }) {
   const [activeModal, setActiveModal] = useState(null);
+  const [imgError, setImgError] = useState(false);
+
   const current = NONSENSE_QUIZZES[index];
+
+  // 문제 번호가 바뀌면 이미지 에러 상태 리셋
+  useEffect(() => {
+    setImgError(false);
+  }, [index]);
 
   const handleNext = () => {
     setActiveModal(null);
@@ -24,22 +31,18 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
         setActiveModal(null);
         return;
       }
-      // H: 힌트 보기 토글
       if (e.key === 'h' || e.key === 'H') {
         setActiveModal((prev) => (prev === 'hint' ? null : 'hint'));
         return;
       }
-      // A: 정답 공개 토글 (숫자 입력 엔터와 충돌하지 않도록 A 키 전용 지정)
       if (e.key === 'a' || e.key === 'A') {
         setActiveModal((prev) => (prev === 'answer' ? null : 'answer'));
         return;
       }
-      // ← / PageUp: 이전 문제
       if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         handlePrev();
         return;
       }
-      // → / PageDown: 다음 문제
       if (e.key === 'ArrowRight' || e.key === 'PageDown') {
         handleNext();
         return;
@@ -50,8 +53,13 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // 실제 그림이 존재하는지 여부 판단 (경로가 있고 로드 에러가 안 났을 때만 true)
+  const hasValidImage = Boolean(current.image && !imgError);
+
   return (
     <div className="w-full flex items-center justify-center gap-5 select-none">
+      
+      {/* 이전 화살표 */}
       <button
         onClick={handlePrev}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#cb000b] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
@@ -60,30 +68,52 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
         <ChevronLeft className="w-10 h-10 md:w-12 md:h-12 stroke-[3]" />
       </button>
 
-      <div className="w-full max-w-[1500px] h-[640px] bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-10 shadow-2xl border border-[#fdc879] flex flex-col items-center justify-between text-center">
-        <h3 className="text-4xl md:text-5xl lg:text-6xl font-black text-[#cb000b] leading-tight pt-2">
-          {current.q}
-        </h3>
+      {/* 문제 카드 본체 */}
+      <div className="w-full max-w-[1500px] h-[640px] bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-10 shadow-2xl border border-[#fdc879] flex flex-col justify-between items-center text-center">
+        
+        {/* 
+          ==================================================
+          1. 그림이 있는 문제:
+             - 2줄 문제여도 제목/그림/버튼 사이 간격 유지
+             - flex-1 min-h-0 으로 그림이 자연스럽게 가변 축소
+          ==================================================
+        */}
+        {hasValidImage ? (
+          <>
+            {/* 문제 텍스트 (2줄이어도 자간/행간 유지) */}
+            <div className="w-full flex items-center justify-center px-4 min-h-[70px] max-h-[140px]">
+              <h3 className="text-3xl md:text-4xl lg:text-[44px] font-black text-[#cb000b] leading-snug break-keep">
+                {current.q}
+              </h3>
+            </div>
 
-        <div className="w-full max-w-4xl h-[380px] rounded-2xl bg-[#fdf4e8] flex items-center justify-center overflow-hidden p-4 my-auto">
-          {current.image ? (
-            <img 
-              src={current.image} 
-              alt={`문제 ${current.id}`} 
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextSibling.style.display = 'flex';
-              }}
-            />
-          ) : null}
-          <div className="hidden flex-col items-center justify-center text-gray-400 gap-3">
-            <ImageIcon className="w-20 h-20 stroke-1" />
-            <span className="text-xl font-bold text-gray-400">지정된 문제 그림이 없습니다.</span>
+            {/* 그림 박스 (고정 높이 대신 남는 공간을 자연스럽게 채움) */}
+            <div className="flex-1 w-full max-w-4xl min-h-0 my-3 rounded-2xl bg-[#fdf4e8] flex items-center justify-center overflow-hidden p-4">
+              <img 
+                src={current.image} 
+                alt={`문제 ${current.id}`} 
+                className="w-full h-full object-contain"
+                onError={() => setImgError(true)}
+              />
+            </div>
+          </>
+        ) : (
+          /* 
+            ==================================================
+            2. 그림이 없는 문제:
+               - 빈 껍데기 박스를 완전히 숨김
+               - 질문 텍스트가 카드 한가운데에 특대형으로 시원하게 노출
+            ==================================================
+          */
+          <div className="flex-1 w-full flex items-center justify-center px-8 my-auto">
+            <h3 className="text-5xl md:text-6xl lg:text-7xl font-black text-[#cb000b] leading-tight break-keep max-w-5xl drop-shadow-sm">
+              {current.q}
+            </h3>
           </div>
-        </div>
+        )}
 
-        <div className="flex items-center gap-4 pb-2">
+        {/* 하단 버튼 (절대 찌그러지지 않도록 flex-shrink-0) */}
+        <div className="flex items-center gap-4 pt-2 flex-shrink-0">
           <button
             onClick={() => setActiveModal('hint')}
             className="px-8 py-3.5 bg-[#fdab23] hover:bg-[#ffa52c] text-white rounded-2xl text-xl font-bold flex items-center gap-2 shadow-sm transition-all active:scale-95"
@@ -102,6 +132,7 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
         </div>
       </div>
 
+      {/* 다음 화살표 */}
       <button
         onClick={handleNext}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#cb000b] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
