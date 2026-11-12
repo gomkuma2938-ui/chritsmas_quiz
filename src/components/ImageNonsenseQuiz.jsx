@@ -5,12 +5,16 @@ import { NONSENSE_QUIZZES } from '../data/quizData';
 
 export default function ImageNonsenseQuiz({ index, setIndex }) {
   const [activeModal, setActiveModal] = useState(null);
+  
+  // 이미지가 '실제로' 정상 로드 완료되었을 때만 true가 됨 (번쩍임 방지)
+  const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
 
   const current = NONSENSE_QUIZZES[index];
 
-  // 문제 번호가 바뀌면 이미지 에러 상태 리셋
+  // 문제 번호 변경 시 상태 리셋
   useEffect(() => {
+    setImgLoaded(false);
     setImgError(false);
   }, [index]);
 
@@ -53,12 +57,28 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // 실제 그림이 존재하는지 여부 판단 (경로가 있고 로드 에러가 안 났을 때만 true)
-  const hasValidImage = Boolean(current.image && !imgError);
+  // 실제 이미지가 준비되었는지 확인 (이미지가 없거나 404면 즉시 false 유지)
+  const hasValidImage = Boolean(current.image && imgLoaded && !imgError);
 
   return (
     <div className="w-full flex items-center justify-center gap-5 select-none">
       
+      {/* 
+        [백그라운드 이미지 프리로더]
+        화면에 미리 박스를 띄우지 않고, 백그라운드에서 로드가 성공했을 때만
+        hasValidImage를 켜주므로 살구색 네모가 번쩍이는 현상이 100% 사라집니다.
+      */}
+      {current.image && !imgError && (
+        <img
+          key={current.image}
+          src={current.image}
+          alt=""
+          className="hidden"
+          onLoad={() => setImgLoaded(true)}
+          onError={() => setImgError(true)}
+        />
+      )}
+
       {/* 이전 화살표 */}
       <button
         onClick={handlePrev}
@@ -71,48 +91,35 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
       {/* 문제 카드 본체 */}
       <div className="w-full max-w-[1500px] h-[640px] bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-10 shadow-2xl border border-[#fdc879] flex flex-col justify-between items-center text-center">
         
-        {/* 
-          ==================================================
-          1. 그림이 있는 문제:
-             - 2줄 문제여도 제목/그림/버튼 사이 간격 유지
-             - flex-1 min-h-0 으로 그림이 자연스럽게 가변 축소
-          ==================================================
-        */}
         {hasValidImage ? (
+          /* 1. 그림이 정상 로드된 문제 */
           <>
-            {/* 문제 텍스트 (2줄이어도 자간/행간 유지) */}
+            {/* 문제 텍스트: 줄간격을 leading-[1.45]로 넓혀 2줄이어도 쾌적함 */}
             <div className="w-full flex items-center justify-center px-4 min-h-[70px] max-h-[140px]">
-              <h3 className="text-3xl md:text-4xl lg:text-[44px] font-black text-[#cb000b] leading-snug break-keep">
+              <h3 className="text-3xl md:text-4xl lg:text-[42px] font-black text-[#cb000b] leading-[1.4] md:leading-[1.45] break-keep py-1">
                 {current.q}
               </h3>
             </div>
 
-            {/* 그림 박스 (고정 높이 대신 남는 공간을 자연스럽게 채움) */}
+            {/* 그림 박스 (유연 축소 구조) */}
             <div className="flex-1 w-full max-w-4xl min-h-0 my-3 rounded-2xl bg-[#fdf4e8] flex items-center justify-center overflow-hidden p-4">
               <img 
                 src={current.image} 
                 alt={`문제 ${current.id}`} 
                 className="w-full h-full object-contain"
-                onError={() => setImgError(true)}
               />
             </div>
           </>
         ) : (
-          /* 
-            ==================================================
-            2. 그림이 없는 문제:
-               - 빈 껍데기 박스를 완전히 숨김
-               - 질문 텍스트가 카드 한가운데에 특대형으로 시원하게 노출
-            ==================================================
-          */
+          /* 2. 그림이 없는 문제 (텍스트 단독 모드, 번쩍임 없이 즉시 중앙 배치) */
           <div className="flex-1 w-full flex items-center justify-center px-8 my-auto">
-            <h3 className="text-5xl md:text-6xl lg:text-7xl font-black text-[#cb000b] leading-tight break-keep max-w-5xl drop-shadow-sm">
+            <h3 className="text-5xl md:text-6xl lg:text-7xl font-black text-[#cb000b] leading-[1.35] md:leading-[1.4] break-keep max-w-5xl drop-shadow-sm py-2">
               {current.q}
             </h3>
           </div>
         )}
 
-        {/* 하단 버튼 (절대 찌그러지지 않도록 flex-shrink-0) */}
+        {/* 하단 버튼 */}
         <div className="flex items-center gap-4 pt-2 flex-shrink-0">
           <button
             onClick={() => setActiveModal('hint')}
