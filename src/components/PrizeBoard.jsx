@@ -42,8 +42,8 @@ export default function PrizeBoard() {
         {INITIAL_PRIZES.map((prize, idx) => {
           const isFlipped = !!openedCards[idx];
           
-          {/* 👇 추가된 부분: 짝/홀수 인덱스에 따라 빨강/초록 교차 설정 */}
-          const isEven = idx % 2 === 0;
+          {/* 👇 체스판(지그재그) 패턴 공식으로 변경 (6열 기준) */}
+          const isEven = (Math.floor(idx / 6) + idx) % 2 === 0;
           const bgClass = isEven ? 'bg-[#cb000b] hover:bg-[#fa4134]' : 'bg-[#15803d] hover:bg-[#16a34a]';
 
           return (
