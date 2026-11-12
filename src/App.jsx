@@ -14,8 +14,12 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [prizeResetKey, setPrizeResetKey] = useState(0);
 
+  // 퀴즈 번호 상태
   const [nonsenseIndex, setNonsenseIndex] = useState(0);
   const [audioIndex, setAudioIndex] = useState(0);
+
+  // 찬양 퀴즈 재생 여부 (퀴즈 재생 시 BGM 일시정지 연동용)
+  const [isQuizPlaying, setIsQuizPlaying] = useState(false);
 
   const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
 
@@ -44,6 +48,14 @@ export default function App() {
     }
   };
 
+  // 탭 이동 시 퀴즈 음원 끄기
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (isQuizPlaying) {
+      setIsQuizPlaying(false);
+    }
+  };
+
   return (
     <div 
       className="min-h-screen text-gray-800 flex flex-col font-sans bg-cover bg-center bg-no-repeat relative selection:bg-[#cb000b] selection:text-white"
@@ -57,7 +69,7 @@ export default function App() {
         <div className="flex flex-col items-start gap-2.5">
           <nav className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-[#fdc879]">
             <button
-              onClick={() => setActiveTab('nonsense')}
+              onClick={() => handleTabChange('nonsense')}
               className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === 'nonsense'
                   ? 'bg-[#cb000b] text-white shadow-sm'
@@ -68,7 +80,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setActiveTab('audio')}
+              onClick={() => handleTabChange('audio')}
               className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === 'audio'
                   ? 'bg-[#cb000b] text-white shadow-sm'
@@ -79,7 +91,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setActiveTab('prizes')}
+              onClick={() => handleTabChange('prizes')}
               className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === 'prizes'
                   ? 'bg-[#076327] text-white shadow-sm'
@@ -90,7 +102,6 @@ export default function App() {
             </button>
           </nav>
 
-          {/* 탭 바로 밑 배지 */}
           {activeTab === 'nonsense' && (
             <div className="pl-1">
               <span className="bg-[#cb000b] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-sm inline-block">
@@ -107,7 +118,7 @@ export default function App() {
           )}
         </div>
 
-        {/* 우측 컨트롤 */}
+        {/* 우측 컨트롤 (BgmPlayer에 퀴즈 재생 상태 전달) */}
         <div className="flex items-center gap-2">
           {activeTab === 'prizes' && (
             <button
@@ -131,27 +142,32 @@ export default function App() {
             isMuted={isMuted} 
             setIsMuted={setIsMuted} 
             volume={volume} 
-            setVolume={setVolume} 
+            setVolume={setVolume}
+            isQuizPlaying={isQuizPlaying}
           />
         </div>
       </header>
 
-      {/* 
-        중앙 메인 컨텐츠:
-        기존 150px에서 70px 올려 pt-[80px]로 최적화
-      */}
+      {/* 중앙 메인 컨텐츠 */}
       <main className="relative z-10 w-full max-w-[1720px] mx-auto px-6 pt-[80px] pb-6 flex-grow flex flex-col justify-center items-center">
         {activeTab === 'nonsense' && (
           <ImageNonsenseQuiz index={nonsenseIndex} setIndex={setNonsenseIndex} />
         )}
         {activeTab === 'audio' && (
-          <DualAudioQuiz index={audioIndex} setIndex={setAudioIndex} />
+          <DualAudioQuiz 
+            index={audioIndex} 
+            setIndex={setAudioIndex}
+            onPlayStateChange={setIsQuizPlaying}
+          />
         )}
         {activeTab === 'prizes' && (
           <PrizeBoard key={prizeResetKey} />
         )}
       </main>
 
+      <footer className="relative z-10 py-1 text-center text-xs text-[#cb000b]/70 font-semibold select-none">
+        🎄 성탄 축하 레크리에이션
+      </footer>
     </div>
   );
 }
