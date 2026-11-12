@@ -1,81 +1,104 @@
 // src/components/DualAudioQuiz.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Square, ChevronLeft, ChevronRight, Eye, HelpCircle, X, Lightbulb, Music2, Disc3 } from 'lucide-react';
+import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Eye, HelpCircle, X, Lightbulb, Music2, Disc3 } from 'lucide-react';
 import { DUAL_AUDIO_QUIZZES } from '../data/quizData';
 
-export default function DualAudioQuiz({ index, setIndex }) {
+export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
 
-  const audioCtxRef = useRef(null);
-  const timerARef = useRef(null);
-  const timerBRef = useRef(null);
+  // 곡 A, 곡 B 실제 오디오 인스턴스
+  const audioARef = useRef(new Audio());
+  const audioBRef = useRef(new Audio());
 
   const current = DUAL_AUDIO_QUIZZES[index];
 
-  const stopAudio = () => {
-    if (timerARef.current) clearInterval(timerARef.current);
-    if (timerBRef.current) clearInterval(timerBRef.current);
+  // 문제 바뀔 때마다 오디오 리셋 및 새 음원 로드
+  useEffect(() => {
+    const audioA = audioARef.current;
+    const audioB = audioBRef.current;
+
+    audioA.pause();
+    audioB.pause();
+    audioA.currentTime = 0;
+    audioB.currentTime = 0;
+
+    audioA.src = current.songA.src;
+    audioB.src = current.songB.src;
+
     setIsPlaying(false);
-  };
+    onPlayStateChange(false);
 
-  const playDualAudio = () => {
-    stopAudio();
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    // 두 곡 모두 끝났을 때 자동 정지 처리
+    const handleEnded = () => {
+      if (audioA.ended && audioB.ended) {
+        setIsPlaying(false);
+        onPlayStateChange(false);
+      }
+    };
+
+    audioA.addEventListener('ended', handleEnded);
+    audioB.addEventListener('ended', handleEnded);
+
+    return () => {
+      audioA.pause();
+      audioB.pause();
+      audioA.removeEventListener('ended', handleEnded);
+      audioB.removeEventListener('ended', handleEnded);
+    };
+  }, [index, current]);
+
+  // [이어서 재생 / 일시정지] 토글
+  const togglePlay = () => {
+    const audioA = audioARef.current;
+    const audioB = audioBRef.current;
+
+    if (isPlaying) {
+      audioA.pause();
+      audioB.pause();
+      setIsPlaying(false);
+      onPlayStateChange(false); // BGM 복구
+    } else {
+      Promise.all([audioA.play(), audioB.play()])
+        .then(() => {
+          setIsPlaying(true);
+          onPlayStateChange(true); // BGM 일시정지
+        })
+        .catch(err => {
+          console.warn("오디오 파일이 아직 없거나 재생이 차단되었습니다.", err);
+          alert("음원 파일(mp3)이 아직 public/audio 폴더에 들어있지 않습니다.");
+        });
     }
-    const ctx = audioCtxRef.current;
-    setIsPlaying(true);
-
-    let stepA = 0;
-    timerARef.current = setInterval(() => {
-      const note = current.songA.notes[stepA % current.songA.notes.length];
-      playSingleNote(ctx, note.f, note.d, 'triangle', 0.14);
-      stepA++;
-    }, 450);
-
-    let stepB = 0;
-    timerBRef.current = setInterval(() => {
-      const note = current.songB.notes[stepB % current.songB.notes.length];
-      playSingleNote(ctx, note.f, note.d, 'sine', 0.2);
-      stepB++;
-    }, 400);
   };
 
-  const playSingleNote = (ctx, freq, duration, type, volume) => {
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+  // [처음부터 다시 듣기 ↺]
+  const restartAudio = () => {
+    const audioA = audioARef.current;
+    const audioB = audioBRef.current;
 
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, now);
+    audioA.currentTime = 0;
+    audioB.currentTime = 0;
 
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(volume, now + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + duration + 0.05);
+    // 만약 정지 상태였다면 바로 처음부터 재생
+    if (!isPlaying) {
+      Promise.all([audioA.play(), audioB.play()])
+        .then(() => {
+          setIsPlaying(true);
+          onPlayStateChange(true);
+        })
+        .catch(() => {});
+    }
   };
 
   const handleNext = () => {
-    stopAudio();
     setActiveModal(null);
     setIndex((prev) => (prev + 1) % DUAL_AUDIO_QUIZZES.length);
   };
 
   const handlePrev = () => {
-    stopAudio();
     setActiveModal(null);
     setIndex((prev) => (prev - 1 + DUAL_AUDIO_QUIZZES.length) % DUAL_AUDIO_QUIZZES.length);
   };
-
-  useEffect(() => {
-    return () => stopAudio();
-  }, [index]);
 
   return (
     <div className="w-full flex items-center justify-center gap-5 select-none">
@@ -89,7 +112,7 @@ export default function DualAudioQuiz({ index, setIndex }) {
         <ChevronLeft className="w-10 h-10 md:w-12 md:h-12 stroke-[3]" />
       </button>
 
-      {/* 카드 */}
+      {/* 카드 본체 */}
       <div className="w-full max-w-[1500px] h-[640px] bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-12 shadow-2xl border border-[#fdc879] flex flex-col items-center justify-between text-center">
         
         {/* 제목 */}
@@ -97,19 +120,18 @@ export default function DualAudioQuiz({ index, setIndex }) {
           <h3 className="text-5xl md:text-6xl font-black text-[#076327] mb-2">{current.title}</h3>
         </div>
 
-        {/* 재생 버튼 */}
-        <div className="w-full max-w-md my-auto">
+        {/* 
+          중앙: [두 곡 재생 / 일시정지 (이어서 듣기)] + [처음부터 ↺] 버튼 그룹
+        */}
+        <div className="my-auto flex items-center gap-4">
+          {/* 메인 재생/일시정지 버튼 (빨간색) */}
           <button
-            onClick={isPlaying ? stopAudio : playDualAudio}
-            className={`w-full py-8 rounded-3xl font-black text-3xl shadow-lg flex items-center justify-center gap-4 transition-all ${
-              isPlaying 
-                ? 'bg-[#fa4134] text-white animate-pulse' 
-                : 'bg-[#cb000b] hover:bg-[#fa4134] text-white'
-            }`}
+            onClick={togglePlay}
+            className="px-12 py-7 bg-[#cb000b] hover:bg-[#fa4134] text-white rounded-3xl font-black text-3xl shadow-lg flex items-center justify-center gap-3 transition-all transform hover:scale-105 active:scale-95"
           >
             {isPlaying ? (
               <>
-                <Square className="w-8 h-8 fill-current" /> 재생 중지
+                <Pause className="w-8 h-8 fill-current" /> 일시정지
               </>
             ) : (
               <>
@@ -117,9 +139,18 @@ export default function DualAudioQuiz({ index, setIndex }) {
               </>
             )}
           </button>
+
+          {/* 처음부터 다시 듣기 리셋 버튼 */}
+          <button
+            onClick={restartAudio}
+            className="p-7 bg-[#feefde] hover:bg-[#fdc879] text-[#cb000b] rounded-3xl shadow-md border border-[#fdc879] transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center"
+            title="처음부터 다시 듣기"
+          >
+            <RotateCcw className="w-8 h-8 stroke-[2.5]" />
+          </button>
         </div>
 
-        {/* 하단 버튼 */}
+        {/* 하단 버튼: 힌트 보기(모달) + 정답 공개(초록색) */}
         <div className="flex items-center gap-4 pb-2">
           <button
             onClick={() => setActiveModal('hint')}
@@ -180,10 +211,7 @@ export default function DualAudioQuiz({ index, setIndex }) {
         </div>
       )}
 
-      {/* 
-        🎉 찬양 정답 모달: 
-        상단 Music2 배지 + 곡 A/B 각각 Disc3 아이콘이 달린 2단 카드 레이아웃
-      */}
+      {/* 🎉 정답 모달 */}
       {activeModal === 'answer' && (
         <div 
           onClick={() => setActiveModal(null)}
@@ -208,7 +236,6 @@ export default function DualAudioQuiz({ index, setIndex }) {
               DUAL HYMN REVEAL
             </span>
 
-            {/* 2곡 분할 카드 */}
             <div className="grid md:grid-cols-2 gap-5 mt-6 text-left">
               <div className="bg-[#fdf4e8] p-6 rounded-2xl border border-[#fdc879] shadow-sm flex flex-col justify-between">
                 <div>
