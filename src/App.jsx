@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Image as ImageIcon, Music, Gift, Maximize, Minimize, RotateCcw } from 'lucide-react';
 import BgmPlayer from './components/BgmPlayer';
 import ImageNonsenseQuiz from './components/ImageNonsenseQuiz';
@@ -14,12 +14,13 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [prizeResetKey, setPrizeResetKey] = useState(0);
 
-  // 퀴즈 번호 상태
   const [nonsenseIndex, setNonsenseIndex] = useState(0);
   const [audioIndex, setAudioIndex] = useState(0);
-
-  // 찬양 퀴즈 재생 여부 (퀴즈 재생 시 BGM 일시정지 연동용)
   const [isQuizPlaying, setIsQuizPlaying] = useState(false);
+
+  // 🔢 키보드로 입력 중인 번호 버퍼 ('3', '10' 등)
+  const [jumpBuffer, setJumpBuffer] = useState('');
+  const jumpTimeoutRef = useRef(null);
 
   const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
 
@@ -48,13 +49,70 @@ export default function App() {
     }
   };
 
-  // 탭 이동 시 퀴즈 음원 끄기
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    setJumpBuffer('');
     if (isQuizPlaying) {
       setIsQuizPlaying(false);
     }
   };
+
+  // ⌨️ [숫자 입력 + Enter] 로 원하는 문제 번호로 즉시 점프
+  useEffect(() => {
+    const handleNumberJump = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      // 0~9 숫자 키를 누르면 버퍼에 누적 (예: 1 누르고 0 누르면 '10')
+      if (e.key >= '0' && e.key <= '9') {
+        if (activeTab === 'nonsense' || activeTab === 'audio') {
+          setJumpBuffer((prev) => {
+            const next = prev + e.key;
+            // 3초간 추가 입력이 없으면 자동 취소
+            if (jumpTimeoutRef.current) clearTimeout(jumpTimeoutRef.current);
+            jumpTimeoutRef.current = setTimeout(() => setJumpBuffer(''), 3000);
+            return next;
+          });
+        }
+        return;
+      }
+
+      // Enter 키: 번호가 입력된 상태면 해당 문제로 이동!
+      if (e.key === 'Enter' && jumpBuffer) {
+        e.preventDefault();
+        const targetNum = parseInt(jumpBuffer, 10);
+
+        if (activeTab === 'nonsense') {
+          if (targetNum >= 1 && targetNum <= NONSENSE_QUIZZES.length) {
+            setNonsenseIndex(targetNum - 1);
+          }
+        } else if (activeTab === 'audio') {
+          if (targetNum >= 1 && targetNum <= DUAL_AUDIO_QUIZZES.length) {
+            setAudioIndex(targetNum - 1);
+          }
+        }
+
+        setJumpBuffer('');
+        if (jumpTimeoutRef.current) clearTimeout(jumpTimeoutRef.current);
+        return;
+      }
+
+      // Backspace: 입력 중인 번호 한 글자 지우기
+      if (e.key === 'Backspace' && jumpBuffer) {
+        setJumpBuffer((prev) => prev.slice(0, -1));
+        return;
+      }
+
+      // ESC: 입력 중인 번호 취소
+      if (e.key === 'Escape' && jumpBuffer) {
+        setJumpBuffer('');
+        if (jumpTimeoutRef.current) clearTimeout(jumpTimeoutRef.current);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleNumberJump);
+    return () => window.removeEventListener('keydown', handleNumberJump);
+  }, [activeTab, jumpBuffer]);
 
   return (
     <div 
@@ -64,7 +122,6 @@ export default function App() {
         backgroundImage: `url(${bgImageUrl})`
       }}
     >
-      {/* 상단 헤더 */}
       <header className="relative z-30 w-full px-8 py-4 flex justify-between items-start select-none">
         <div className="flex flex-col items-start gap-2.5">
           <nav className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-[#fdc879]">
@@ -102,23 +159,28 @@ export default function App() {
             </button>
           </nav>
 
-          {activeTab === 'nonsense' && (
-            <div className="pl-1">
+          {/* 탭 바로 밑 배지 + 숫자 입력 시 [이동: 번호 ↵] 실시간 표시 */}
+          <div className="flex items-center gap-2 pl-1">
+            {activeTab === 'nonsense' && (
               <span className="bg-[#cb000b] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-sm inline-block">
                 문제 {nonsenseIndex + 1} / {NONSENSE_QUIZZES.length}
               </span>
-            </div>
-          )}
-          {activeTab === 'audio' && (
-            <div className="pl-1">
+            )}
+            {activeTab === 'audio' && (
               <span className="bg-[#076327] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-sm inline-block">
                 음악 퀴즈 {audioIndex + 1} / {DUAL_AUDIO_QUIZZES.length}
               </span>
-            </div>
-          )}
+            )}
+
+            {/* 숫자를 타이핑 중일 때 뜨는 노란색 입력 배지 */}
+            {jumpBuffer && (
+              <span className="bg-[#fdab23] text-white font-black px-4 py-1.5 rounded-xl text-base shadow-md animate-pulse">
+                이동: {jumpBuffer} ↵
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* 우측 컨트롤 (BgmPlayer에 퀴즈 재생 상태 전달) */}
         <div className="flex items-center gap-2">
           {activeTab === 'prizes' && (
             <button
@@ -148,7 +210,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* 중앙 메인 컨텐츠 */}
       <main className="relative z-10 w-full max-w-[1720px] mx-auto px-6 pt-[80px] pb-6 flex-grow flex flex-col justify-center items-center">
         {activeTab === 'nonsense' && (
           <ImageNonsenseQuiz index={nonsenseIndex} setIndex={setNonsenseIndex} />
