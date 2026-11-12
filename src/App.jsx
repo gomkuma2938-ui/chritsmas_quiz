@@ -133,7 +133,7 @@ export default function App() {
                   : 'text-gray-600 hover:text-[#cb000b] hover:bg-[#feefde]'
               }`}
             >
-              <ImageIcon className="w-4 h-4" /> 그림 넌센스
+              <ImageIcon className="w-4 h-4" /> 퀴즈
             </button>
 
             <button
@@ -144,7 +144,7 @@ export default function App() {
                   : 'text-gray-600 hover:text-[#cb000b] hover:bg-[#feefde]'
               }`}
             >
-              <Music className="w-4 h-4" /> 찬양 동시듣기
+              <Music className="w-4 h-4" /> 찬양 퀴즈
             </button>
 
             <button
