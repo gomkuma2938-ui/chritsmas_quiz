@@ -5,14 +5,11 @@ import { NONSENSE_QUIZZES } from '../data/quizData';
 
 export default function ImageNonsenseQuiz({ index, setIndex }) {
   const [activeModal, setActiveModal] = useState(null);
-  
-  // 이미지가 '실제로' 정상 로드 완료되었을 때만 true가 됨 (번쩍임 방지)
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
 
   const current = NONSENSE_QUIZZES[index];
 
-  // 문제 번호 변경 시 상태 리셋
   useEffect(() => {
     setImgLoaded(false);
     setImgError(false);
@@ -57,17 +54,12 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // 실제 이미지가 준비되었는지 확인 (이미지가 없거나 404면 즉시 false 유지)
   const hasValidImage = Boolean(current.image && imgLoaded && !imgError);
 
   return (
     <div className="w-full flex items-center justify-center gap-5 select-none">
       
-      {/* 
-        [백그라운드 이미지 프리로더]
-        화면에 미리 박스를 띄우지 않고, 백그라운드에서 로드가 성공했을 때만
-        hasValidImage를 켜주므로 살구색 네모가 번쩍이는 현상이 100% 사라집니다.
-      */}
+      {/* 백그라운드 이미지 프리로더 (번쩍임 방지) */}
       {current.image && !imgError && (
         <img
           key={current.image}
@@ -92,16 +84,17 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
       <div className="w-full max-w-[1500px] h-[640px] bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-10 shadow-2xl border border-[#fdc879] flex flex-col justify-between items-center text-center">
         
         {hasValidImage ? (
-          /* 1. 그림이 정상 로드된 문제 */
+          /* 1. 그림이 있는 문제 */
           <>
-            {/* 문제 텍스트: 줄간격을 leading-[1.45]로 넓혀 2줄이어도 쾌적함 */}
             <div className="w-full flex items-center justify-center px-4 min-h-[70px] max-h-[140px]">
-              <h3 className="text-3xl md:text-4xl lg:text-[42px] font-black text-[#cb000b] leading-[1.4] md:leading-[1.45] break-keep py-1">
+              <h3 
+                className="text-3xl md:text-4xl lg:text-[42px] font-black text-[#cb000b] break-keep py-1"
+                style={{ lineHeight: 1.6 }}
+              >
                 {current.q}
               </h3>
             </div>
 
-            {/* 그림 박스 (유연 축소 구조) */}
             <div className="flex-1 w-full max-w-4xl min-h-0 my-3 rounded-2xl bg-[#fdf4e8] flex items-center justify-center overflow-hidden p-4">
               <img 
                 src={current.image} 
@@ -111,9 +104,12 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
             </div>
           </>
         ) : (
-          /* 2. 그림이 없는 문제 (텍스트 단독 모드, 번쩍임 없이 즉시 중앙 배치) */
+          /* 2. 그림 없는 문제 (캡처에 나온 화면: 줄간격 1.75배로 시원하게 확대) */
           <div className="flex-1 w-full flex items-center justify-center px-8 my-auto">
-            <h3 className="text-5xl md:text-6xl lg:text-7xl font-black text-[#cb000b] leading-[1.35] md:leading-[1.4] break-keep max-w-5xl drop-shadow-sm py-2">
+            <h3 
+              className="text-5xl md:text-6xl lg:text-[68px] font-black text-[#cb000b] break-keep max-w-5xl drop-shadow-sm"
+              style={{ lineHeight: 1.75 }}
+            >
               {current.q}
             </h3>
           </div>
