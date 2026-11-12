@@ -1,5 +1,5 @@
 // src/components/ImageNonsenseQuiz.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, HelpCircle, Eye, X, Lightbulb, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { NONSENSE_QUIZZES } from '../data/quizData';
 
@@ -17,26 +17,54 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
     setIndex((prev) => (prev - 1 + NONSENSE_QUIZZES.length) % NONSENSE_QUIZZES.length);
   };
 
+  // 키보드 단축키
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setActiveModal(null);
+        return;
+      }
+      // H: 힌트 보기 토글
+      if (e.key === 'h' || e.key === 'H') {
+        setActiveModal((prev) => (prev === 'hint' ? null : 'hint'));
+        return;
+      }
+      // A: 정답 공개 토글 (숫자 입력 엔터와 충돌하지 않도록 A 키 전용 지정)
+      if (e.key === 'a' || e.key === 'A') {
+        setActiveModal((prev) => (prev === 'answer' ? null : 'answer'));
+        return;
+      }
+      // ← / PageUp: 이전 문제
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        handlePrev();
+        return;
+      }
+      // → / PageDown: 다음 문제
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        handleNext();
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="w-full flex items-center justify-center gap-5 select-none">
-      
-      {/* 이전 화살표 */}
       <button
         onClick={handlePrev}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#cb000b] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
-        title="이전 문제"
+        title="이전 문제 (← 또는 PageUp)"
       >
         <ChevronLeft className="w-10 h-10 md:w-12 md:h-12 stroke-[3]" />
       </button>
 
-      {/* 문제 카드 */}
       <div className="w-full max-w-[1500px] h-[640px] bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-10 shadow-2xl border border-[#fdc879] flex flex-col items-center justify-between text-center">
-        
         <h3 className="text-4xl md:text-5xl lg:text-6xl font-black text-[#cb000b] leading-tight pt-2">
           {current.q}
         </h3>
 
-        {/* 그림 박스 */}
         <div className="w-full max-w-4xl h-[380px] rounded-2xl bg-[#fdf4e8] flex items-center justify-center overflow-hidden p-4 my-auto">
           {current.image ? (
             <img 
@@ -55,11 +83,11 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
           </div>
         </div>
 
-        {/* 하단 버튼 */}
         <div className="flex items-center gap-4 pb-2">
           <button
             onClick={() => setActiveModal('hint')}
             className="px-8 py-3.5 bg-[#fdab23] hover:bg-[#ffa52c] text-white rounded-2xl text-xl font-bold flex items-center gap-2 shadow-sm transition-all active:scale-95"
+            title="힌트 보기 (단축키: H)"
           >
             <HelpCircle className="w-6 h-6" /> 힌트 보기
           </button>
@@ -67,25 +95,22 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
           <button
             onClick={() => setActiveModal('answer')}
             className="px-10 py-3.5 bg-[#cb000b] hover:bg-[#fa4134] text-white font-black text-2xl rounded-2xl shadow-sm transition-all active:scale-95 flex items-center gap-2"
+            title="정답 공개 (단축키: A)"
           >
             <Eye className="w-7 h-7" /> 정답 공개
           </button>
         </div>
       </div>
 
-      {/* 다음 화살표 */}
       <button
         onClick={handleNext}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#cb000b] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
-        title="다음 문제"
+        title="다음 문제 (→ 또는 PageDown)"
       >
         <ChevronRight className="w-10 h-10 md:w-12 md:h-12 stroke-[3]" />
       </button>
 
-      {/* 
-        💡 힌트 모달: 
-        상단 Lightbulb 벡터 아이콘 배지 + 이중 프레임(플라크) 레이아웃
-      */}
+      {/* 💡 힌트 모달 */}
       {activeModal === 'hint' && (
         <div 
           onClick={() => setActiveModal(null)}
@@ -102,7 +127,6 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
               <X className="w-7 h-7" />
             </button>
 
-            {/* 아이콘 상단 심볼 */}
             <div className="w-16 h-16 mx-auto mb-3 bg-[#feefde] rounded-2xl border border-[#fdc879] flex items-center justify-center text-[#fdab23] shadow-sm">
               <Lightbulb className="w-9 h-9 stroke-[2.2]" />
             </div>
@@ -111,7 +135,6 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
               QUESTION HINT
             </span>
 
-            {/* 힌트 본문 플라크 */}
             <div className="mt-6 bg-[#fdf4e8] rounded-2xl p-6 md:p-8 border border-[#fdc879]/50 shadow-inner">
               <p className="text-3xl md:text-4xl font-black text-[#cb000b] leading-relaxed break-keep">
                 {current.hint}
@@ -121,10 +144,7 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
         </div>
       )}
 
-      {/* 
-        🎉 정답 모달: 
-        상단 Sparkles 축하 배지 + 정답 카드 프레임 레이아웃
-      */}
+      {/* 🎉 정답 모달 */}
       {activeModal === 'answer' && (
         <div 
           onClick={() => setActiveModal(null)}
@@ -141,7 +161,6 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
               <X className="w-7 h-7" />
             </button>
 
-            {/* 아이콘 상단 심볼 */}
             <div className="w-16 h-16 mx-auto mb-3 bg-[#cb000b] rounded-2xl flex items-center justify-center text-[#fdc879] shadow-md">
               <Sparkles className="w-9 h-9 stroke-[2.2]" />
             </div>
@@ -150,7 +169,6 @@ export default function ImageNonsenseQuiz({ index, setIndex }) {
               CORRECT ANSWER
             </span>
 
-            {/* 정답 텍스트 플라크 */}
             <div className="mt-6 bg-[#fdf4e8] rounded-2xl p-6 md:p-8 border border-[#fdc879] shadow-inner">
               <p className="text-5xl md:text-7xl font-black text-[#cb000b] drop-shadow-sm">
                 {current.a}
