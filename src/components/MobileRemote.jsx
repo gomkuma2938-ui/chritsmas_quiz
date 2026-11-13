@@ -18,9 +18,6 @@ export default function MobileRemote() {
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const reconnectTimerRef = useRef(null);
-  const targetPinRef = useRef('1225');
-  
-  // 💡 [개선점 2] 연결 시도마다 증가하는 고유 식별자 (좀비 이벤트 원천 차단용)
   const attemptIdRef = useRef(0);
 
   const TABS = [
@@ -34,13 +31,11 @@ export default function MobileRemote() {
     const urlPin = params.get('pin');
     if (urlPin) {
       setPin(urlPin);
-      targetPinRef.current = urlPin;
       connectToHost(urlPin);
     }
 
-    // 💡 [개선점 3] 언마운트 시 connRef, peerRef 명시적 정리
     return () => {
-      attemptIdRef.current++; // 모든 진행 중인 시도 무효화
+      attemptIdRef.current++;
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       if (connRef.current) {
         try { connRef.current.close(); } catch (e) {}
@@ -60,13 +55,9 @@ export default function MobileRemote() {
       return;
     }
 
-    targetPinRef.current = cleanPin;
     setIsConnecting(true);
-
-    // 💡 [개선점 2] 새 연결 시도마다 ID를 갱신하여 이전 연결의 비동기 이벤트는 전부 무효화시킴
     const currentAttemptId = ++attemptIdRef.current;
 
-    // 💡 [개선점 3] 새 연결 시작 전 이전 conn 및 타이머 초기화
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
@@ -91,7 +82,6 @@ export default function MobileRemote() {
     peerRef.current = currentPeer;
 
     currentPeer.on('open', () => {
-      // 💡 [개선점 2] 유효성 검사 (이전 세션의 콜백이면 즉시 탈출)
       if (currentAttemptId !== attemptIdRef.current) return;
 
       const conn = currentPeer.connect(`church-quiz-${cleanPin}`);
@@ -117,6 +107,7 @@ export default function MobileRemote() {
         }
       });
 
+      // 네트워크 불안정으로 끊긴 경우만 자동 재접속 (3초 딜레이)
       const handleDisconnect = () => {
         if (currentAttemptId !== attemptIdRef.current) return;
         setIsConnected(false);
@@ -137,16 +128,26 @@ export default function MobileRemote() {
     currentPeer.on('error', (err) => {
       if (currentAttemptId !== attemptIdRef.current) return;
       
-      // 💡 [개선점 3] peer-unavailable이라도 방송실이 켜지는 중일 수 있으므로 즉시 단정 짓지 않고 재시도 루프 태우기
-      setIsConnected(false);
-      setIsConnecting(true);
-
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = setTimeout(() => {
-        if (currentAttemptId === attemptIdRef.current) {
-          connectToHost(cleanPin);
+      // 💡 [개선 완료] 잘못된 PIN 입력(존재하지 않는 방)인 경우 무한 재시도 멈추고 입력창 오픈
+      if (err.type === 'peer-unavailable') {
+        alert('해당 PIN 번호의 방송실 화면을 찾을 수 없습니다. 번호를 다시 확인해주세요.');
+        setIsConnected(false);
+        setIsConnecting(false);
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
         }
-      }, 3000);
+      } else {
+        // 그 외 네트워크 에러는 자동 재시도
+        setIsConnected(false);
+        setIsConnecting(true);
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = setTimeout(() => {
+          if (currentAttemptId === attemptIdRef.current) {
+            connectToHost(cleanPin);
+          }
+        }, 3000);
+      }
     });
   };
 
@@ -173,12 +174,12 @@ export default function MobileRemote() {
             placeholder="PIN 번호 4자리"
             className="w-full py-4 text-center text-3xl font-black tracking-widest rounded-2xl border-2 border-[#fdab23] bg-white outline-none focus:border-[#cb000b] shadow-inner"
           />
+          {/* 💡 [개선 완료] 실패 시에도 버튼을 항상 활성화하여 사용자가 언제든 다시 누를 수 있게 함 */}
           <button
             onClick={() => connectToHost(pin)}
-            disabled={isConnecting}
-            className="w-full py-4 bg-[#cb000b] disabled:bg-gray-400 text-white text-xl font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+            className="w-full py-4 bg-[#cb000b] hover:bg-[#fa4134] text-white text-xl font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            {isConnecting ? '방송실 재연결 중...' : '방송실 화면 연결'}
+            {isConnecting ? '방송실 연결/재시도 중...' : '방송실 화면 연결'}
           </button>
         </div>
       </div>
