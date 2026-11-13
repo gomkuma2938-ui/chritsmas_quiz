@@ -5,7 +5,7 @@ import { Play, Pause, RotateCcw, HelpCircle, Eye, X, Smartphone, RefreshCw } fro
 import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from '../data/quizData';
 
 export default function MobileRemote() {
-  const [pin, setPin] = useState('4259');
+  const [pin, setPin] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [gameState, setGameState] = useState({
