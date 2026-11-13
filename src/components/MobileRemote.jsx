@@ -224,4 +224,94 @@ export default function MobileRemote() {
                     className={`h-20 rounded-2xl font-black text-3xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
                       isCurrent
                         ? 'bg-[#076327] text-white border-2 border-[#fdc879] scale-105'
-                        : 'bg-white text-gray-800 border border-gra
+                        : 'bg-white text-gray-800 border border-gray-200'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'prizes' && (
+          <div className="space-y-1">
+            <p className="text-center text-[11px] font-bold text-gray-500 mb-1">선물 번호판 원격 제어</p>
+            <div className="grid grid-cols-6 gap-1.5 max-w-sm mx-auto w-full px-1 max-h-[50vh] overflow-y-auto">
+              {Array.from({ length: 23 }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => sendAction('CLICK_PRIZE', i)}
+                  className="h-12 bg-white hover:bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-xl font-black text-lg shadow-sm transition-all active:scale-90 flex items-center justify-center"
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 하단 컨트롤러 */}
+      <div className="flex-shrink-0 space-y-2 pt-1 pb-1">
+        {activeTab === 'audio' && (
+          <div className="grid grid-cols-4 gap-2">
+            <button
+              onClick={() => sendAction(isQuizPlaying ? 'PAUSE_AUDIO' : 'PLAY_AUDIO')}
+              className={`col-span-3 py-3.5 rounded-2xl text-lg font-black text-white shadow-md flex items-center justify-center gap-2 active:scale-95 ${
+                isQuizPlaying ? 'bg-[#fa4134] animate-pulse' : 'bg-[#cb000b]'
+              }`}
+            >
+              {isQuizPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              {isQuizPlaying ? '일시정지' : '두 곡 재생 🎶'}
+            </button>
+            <button
+              onClick={() => sendAction('RESTART_AUDIO')}
+              className="py-3.5 bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-2xl flex items-center justify-center shadow-md active:scale-95"
+            >
+              <RotateCcw className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {activeTab !== 'prizes' && (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => sendAction('TOGGLE_HINT')}
+              className="py-3.5 bg-[#fdab23] text-white text-base font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              <HelpCircle className="w-5 h-5" /> 힌트 열기/닫기
+            </button>
+
+            <button
+              onClick={() => sendAction('TOGGLE_ANSWER')}
+              className="py-3.5 bg-[#cb000b] text-white text-base font-black rounded-2xl shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              <Eye className="w-5 h-5" /> 정답 열기/닫기
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'prizes' && (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => sendAction('CLOSE_MODAL')}
+              className="py-3.5 bg-gray-700 text-white text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              <X className="w-4 h-4" /> 팝업 닫기 (ESC)
+            </button>
+
+            <button
+              onClick={() => sendAction('RESET_PRIZES')}
+              className="py-3.5 bg-red-100 text-[#cb000b] border border-red-200 text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              <RefreshCw className="w-4 h-4" /> 뽑기판 전체 리셋
+            </button>
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+}
