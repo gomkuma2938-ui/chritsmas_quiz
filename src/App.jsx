@@ -14,17 +14,12 @@ export default function App() {
   const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
   const isRemoteParam = window.location.search.includes('remote');
 
-  // 스마트폰으로 들어왔거나, 리모컨 링크로 들어왔으면 무조건 리모컨 화면으로 띄움!
+  // 스마트폰으로 들어왔거나 리모컨 링크로 들어왔으면 무조건 모바일 전용 리모컨 화면 실행!
   if (isRemoteParam || isMobileDevice) {
     return <MobileRemote />;
   }
 
-export default function App() {
-  // 모바일 접속(?remote=true) 시 리모컨 화면 렌더링
-  if (window.location.search.includes('remote')) {
-    return <MobileRemote />;
-  }
-
+  // --- 이하 방송실 PC 송출 화면 로직 ---
   const [activeTab, setActiveTab] = useState('nonsense');
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(40);
@@ -35,7 +30,7 @@ export default function App() {
   const [audioIndex, setAudioIndex] = useState(0);
   const [isQuizPlaying, setIsQuizPlaying] = useState(false);
 
-  // 리모컨 접속용 고유 PIN
+  // 리모컨 접속용 고유 PIN (랜덤 4자리)
   const [roomPin] = useState(() => Math.floor(1000 + Math.random() * 9000).toString());
   const [showRemoteModal, setShowRemoteModal] = useState(false);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
@@ -43,7 +38,7 @@ export default function App() {
 
   const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
 
-  // 📡 WebRTC 리스너 (사회자 폰의 다이렉트 번호 및 조작 명령 수신)
+  // 📡 WebRTC PeerJS 호스트 리스너 (사회자 폰의 원격 조작 명령 수신)
   useEffect(() => {
     const peer = new Peer(`church-quiz-${roomPin}`);
     peer.on('connection', (conn) => {
@@ -53,12 +48,9 @@ export default function App() {
       conn.on('data', (data) => {
         const { action, payload } = data;
 
-        // 탭 변경
         if (action === 'SET_TAB') {
           setActiveTab(payload);
         }
-
-        // 다이렉트 번호 선택 (예: 6번 문제 누름)
         if (action === 'SET_INDEX') {
           setActiveTab((tab) => {
             if (tab === 'nonsense') setNonsenseIndex(payload);
@@ -66,22 +58,16 @@ export default function App() {
             return tab;
           });
         }
-
-        // 선물 카드 1~23번 원격 오픈
         if (action === 'CLICK_PRIZE') {
           setActiveTab('prizes');
           window.dispatchEvent(new CustomEvent('remote-prize-click', { detail: payload }));
         }
-
-        // 힌트 / 정답 토글
         if (action === 'TOGGLE_HINT') {
           window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h' }));
         }
         if (action === 'TOGGLE_ANSWER') {
           window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
         }
-
-        // 오디오 재생 / 일시정지 / 처음부터
         if (action === 'PLAY_AUDIO') {
           if (!isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
         }
@@ -91,13 +77,9 @@ export default function App() {
         if (action === 'RESTART_AUDIO') {
           window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
         }
-
-        // 모달 닫기 (ESC)
         if (action === 'CLOSE_MODAL') {
           window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
         }
-
-        // 뽑기판 전체 리셋
         if (action === 'RESET_PRIZES') {
           handleResetPrizeBoard();
         }
@@ -109,7 +91,7 @@ export default function App() {
     return () => peer.destroy();
   }, [roomPin, isQuizPlaying]);
 
-  // 상태 동기화 패킷 전송
+  // 상태 동기화 패킷 전송 (컨닝페이퍼 갱신용)
   useEffect(() => {
     if (connRef.current && isRemoteConnected) {
       connRef.current.send({
@@ -185,7 +167,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* 우측 상단: [📱 모바일 리모컨 연결] */}
+        {/* 우측 컨트롤: [📱 모바일 리모컨 버튼] */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowRemoteModal(true)}
