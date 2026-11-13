@@ -5,7 +5,7 @@ import { Play, Pause, RotateCcw, HelpCircle, Eye, X, Smartphone, RefreshCw } fro
 import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from '../data/quizData';
 
 export default function MobileRemote() {
-  const [pin, setPin] = useState('1225');
+  const [pin, setPin] = useState('4259');
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [gameState, setGameState] = useState({
@@ -164,7 +164,7 @@ export default function MobileRemote() {
           <Smartphone className="w-8 h-8" />
         </div>
         <h2 className="text-2xl font-black text-[#cb000b] mb-1">사회자 무선 리모컨</h2>
-        <p className="text-xs font-bold text-gray-500 mb-6">방송실 화면의 PIN 번호(기본 1225)를 확인하세요</p>
+        <p className="text-xs font-bold text-gray-500 mb-6">방송실 화면의 PIN 번호를 확인하세요</p>
 
         <div className="w-full max-w-xs space-y-3">
           <input
