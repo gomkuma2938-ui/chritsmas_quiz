@@ -18,7 +18,10 @@ export default function MobileRemote() {
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const reconnectTimerRef = useRef(null);
-  const targetPinRef = useRef('1225'); // 재접속 시 참조할 PIN 보관용 Ref
+  const targetPinRef = useRef('1225');
+  
+  // 💡 [개선점 2] 연결 시도마다 증가하는 고유 식별자 (좀비 이벤트 원천 차단용)
+  const attemptIdRef = useRef(0);
 
   const TABS = [
     { id: 'nonsense', name: '그림 넌센스', count: NONSENSE_QUIZZES.length },
@@ -26,7 +29,6 @@ export default function MobileRemote() {
     { id: 'prizes', name: '선물 뽑기판', count: 23 },
   ];
 
-  // URL에서 PIN 감지
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlPin = params.get('pin');
@@ -35,21 +37,21 @@ export default function MobileRemote() {
       targetPinRef.current = urlPin;
       connectToHost(urlPin);
     }
+
+    // 💡 [개선점 3] 언마운트 시 connRef, peerRef 명시적 정리
+    return () => {
+      attemptIdRef.current++; // 모든 진행 중인 시도 무효화
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (connRef.current) {
+        try { connRef.current.close(); } catch (e) {}
+        connRef.current = null;
+      }
+      if (peerRef.current) {
+        try { peerRef.current.destroy(); } catch (e) {}
+        peerRef.current = null;
+      }
+    };
   }, []);
-
-  // 🛡️ [완벽 보완] close 뿐만 아니라 error 발생 시에도 3초 후 무조건 자동 재접속을 시도하는 통합 함수
-  const triggerAutoReconnect = (cleanPin) => {
-    setIsConnected(false);
-    setIsConnecting(true);
-
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-    }
-
-    reconnectTimerRef.current = setTimeout(() => {
-      connectToHost(cleanPin);
-    }, 3000);
-  };
 
   const connectToHost = (targetPin) => {
     const cleanPin = String(targetPin || '').trim();
@@ -61,53 +63,90 @@ export default function MobileRemote() {
     targetPinRef.current = cleanPin;
     setIsConnecting(true);
 
+    // 💡 [개선점 2] 새 연결 시도마다 ID를 갱신하여 이전 연결의 비동기 이벤트는 전부 무효화시킴
+    const currentAttemptId = ++attemptIdRef.current;
+
+    // 💡 [개선점 3] 새 연결 시작 전 이전 conn 및 타이머 초기화
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    if (connRef.current) {
+      try { connRef.current.close(); } catch (e) {}
+      connRef.current = null;
+    }
     if (peerRef.current) {
-      try { peerRef.current.destroy(); } catch (e) {}
+      try {
+        peerRef.current.removeAllListeners();
+        peerRef.current.destroy();
+      } catch (e) {}
+      peerRef.current = null;
     }
 
-    const peer = new Peer({
+    const currentPeer = new Peer({
       config: {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
       },
     });
-    peerRef.current = peer;
+    peerRef.current = currentPeer;
 
-    peer.on('open', () => {
-      const conn = peer.connect(`church-quiz-${cleanPin}`);
+    currentPeer.on('open', () => {
+      // 💡 [개선점 2] 유효성 검사 (이전 세션의 콜백이면 즉시 탈출)
+      if (currentAttemptId !== attemptIdRef.current) return;
+
+      const conn = currentPeer.connect(`church-quiz-${cleanPin}`);
       connRef.current = conn;
 
       conn.on('open', () => {
+        if (currentAttemptId !== attemptIdRef.current) {
+          conn.close();
+          return;
+        }
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+        }
         setIsConnected(true);
         setIsConnecting(false);
       });
 
       conn.on('data', (data) => {
+        if (currentAttemptId !== attemptIdRef.current) return;
         if (data.type === 'SYNC') {
           setGameState(data.payload);
         }
       });
 
-      // 🔥 연결 종료 시 자동 재접속 트리거
-      conn.on('close', () => {
-        triggerAutoReconnect(cleanPin);
-      });
+      const handleDisconnect = () => {
+        if (currentAttemptId !== attemptIdRef.current) return;
+        setIsConnected(false);
+        setIsConnecting(true);
 
-      // 🔥 통신 중 에러 발생 시 자동 재접속 트리거
-      conn.on('error', () => {
-        triggerAutoReconnect(cleanPin);
-      });
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = setTimeout(() => {
+          if (currentAttemptId === attemptIdRef.current) {
+            connectToHost(cleanPin);
+          }
+        }, 3000);
+      };
+
+      conn.on('close', handleDisconnect);
+      conn.on('error', handleDisconnect);
     });
 
-    // 🔥 Peer 객체 자체 에러(네트워크 단절 등) 발생 시 자동 재접속 트리거
-    peer.on('error', (err) => {
-      // 최초 연결 시 PIN 번호가 틀린 경우는 재접속 안 하고 바로 알림
-      if (err.type === 'peer-unavailable') {
-        alert('해당 PIN 번호의 방송실 화면을 찾을 수 없습니다. PIN을 확인하세요.');
-        setIsConnecting(false);
-        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      } else {
-        triggerAutoReconnect(cleanPin);
-      }
+    currentPeer.on('error', (err) => {
+      if (currentAttemptId !== attemptIdRef.current) return;
+      
+      // 💡 [개선점 3] peer-unavailable이라도 방송실이 켜지는 중일 수 있으므로 즉시 단정 짓지 않고 재시도 루프 태우기
+      setIsConnected(false);
+      setIsConnecting(true);
+
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = setTimeout(() => {
+        if (currentAttemptId === attemptIdRef.current) {
+          connectToHost(cleanPin);
+        }
+      }, 3000);
     });
   };
 
