@@ -14,8 +14,14 @@ export default function App() {
   const isRemoteParam = params.get('remote') === 'true' || params.has('remote');
   const isScreenParam = params.get('screen') === 'true';
 
+  // 🔥 수정된 감지 로직:
+  // - URL에 ?remote가 붙었거나,
+  // - '진짜 모바일 기기'이면서 동시에 '화면 가로 폭이 768px 미만(진짜 모바일 화면 크기)'일 때만 리모컨으로 전환!
+  // (F12 반응형 모드에서 창을 넓게 펴놓거나 PC로 보고 있으면 무조건 송출 화면이 유지됩니다)
   const isRealMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const shouldShowRemote = !isScreenParam && (isRemoteParam || isRealMobileDevice);
+  const isMobileScreenSize = window.innerWidth < 768;
+  
+  const shouldShowRemote = !isScreenParam && (isRemoteParam || (isRealMobileDevice && isMobileScreenSize));
 
   if (shouldShowRemote) {
     return <MobileRemote />;
