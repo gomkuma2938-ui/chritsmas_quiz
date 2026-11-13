@@ -10,12 +10,16 @@ import MobileRemote from './components/MobileRemote';
 import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from './data/quizData';
 
 export default function App() {
-  // 🔥 접속 기기가 스마트폰인지 자동 감지 + QR코드(?remote=true) 접속 감지
-  const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
-  const isRemoteParam = window.location.search.includes('remote');
+  const params = new URLSearchParams(window.location.search);
+  const isRemoteParam = params.get('remote') === 'true' || params.has('remote');
+  const isScreenParam = params.get('screen') === 'true';
 
-  // 스마트폰으로 들어왔거나 리모컨 링크로 들어왔으면 무조건 모바일 전용 리모컨 화면 실행!
-  if (isRemoteParam || isMobileDevice) {
+  // 🔥 PC에서 F12 눌러도 화면 안 바뀌도록 '화면 너비' 감지 삭제!
+  // 오직 실제 스마트폰 기기이거나 URL에 ?remote가 있을 때만 리모컨으로 실행
+  const isRealMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const shouldShowRemote = !isScreenParam && (isRemoteParam || isRealMobileDevice);
+
+  if (shouldShowRemote) {
     return <MobileRemote />;
   }
 
@@ -38,9 +42,14 @@ export default function App() {
 
   const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
 
-  // 📡 WebRTC PeerJS 호스트 리스너 (사회자 폰의 원격 조작 명령 수신)
+  // 📡 WebRTC PeerJS 호스트 리스너
   useEffect(() => {
-    const peer = new Peer(`church-quiz-${roomPin}`);
+    const peer = new Peer(`church-quiz-${roomPin}`, {
+      config: {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      },
+    });
+
     peer.on('connection', (conn) => {
       connRef.current = conn;
       setIsRemoteConnected(true);
@@ -48,9 +57,7 @@ export default function App() {
       conn.on('data', (data) => {
         const { action, payload } = data;
 
-        if (action === 'SET_TAB') {
-          setActiveTab(payload);
-        }
+        if (action === 'SET_TAB') setActiveTab(payload);
         if (action === 'SET_INDEX') {
           setActiveTab((tab) => {
             if (tab === 'nonsense') setNonsenseIndex(payload);
@@ -91,7 +98,6 @@ export default function App() {
     return () => peer.destroy();
   }, [roomPin, isQuizPlaying]);
 
-  // 상태 동기화 패킷 전송 (컨닝페이퍼 갱신용)
   useEffect(() => {
     if (connRef.current && isRemoteConnected) {
       connRef.current.send({
@@ -167,7 +173,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* 우측 컨트롤: [📱 모바일 리모컨 버튼] */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowRemoteModal(true)}
@@ -210,14 +215,12 @@ export default function App() {
         </div>
       </header>
 
-      {/* 중앙 메인 송출 뷰 */}
       <main className="relative z-10 w-full max-w-[1720px] mx-auto px-6 pt-[80px] pb-6 flex-grow flex flex-col justify-center items-center">
         {activeTab === 'nonsense' && <ImageNonsenseQuiz index={nonsenseIndex} setIndex={setNonsenseIndex} />}
         {activeTab === 'audio' && <DualAudioQuiz index={audioIndex} setIndex={setAudioIndex} onPlayStateChange={setIsQuizPlaying} />}
         {activeTab === 'prizes' && <PrizeBoard key={prizeResetKey} />}
       </main>
 
-      {/* 📱 QR 코드 및 PIN 번호 팝업 */}
       {showRemoteModal && (
         <div 
           onClick={() => setShowRemoteModal(false)}
@@ -235,7 +238,7 @@ export default function App() {
             </button>
 
             <h3 className="text-xl font-black text-[#cb000b] mb-1">사회자 스마트폰 연결</h3>
-            <p className="text-xs text-gray-500 mb-4">폰 카메라로 QR을 찍으면 바로 리모컨이 열립니다</p>
+            <p className="text-xs text-gray-500 mb-4">폰 카메라로 QR을 찍으면 바로 연결됩니다</p>
 
             <div className="bg-white p-3 rounded-2xl border border-gray-200 inline-block shadow-sm mb-4">
               <img src={qrCodeUrl} alt="리모컨 QR 코드" className="w-44 h-44 mx-auto" />
