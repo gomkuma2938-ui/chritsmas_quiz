@@ -14,20 +14,13 @@ export default function App() {
   const isRemoteParam = params.get('remote') === 'true' || params.has('remote');
   const isScreenParam = params.get('screen') === 'true';
 
-  // 🔥 수정된 감지 로직:
-  // 1. 아이패드 등 태블릿은 제외하고 오직 '스마트폰(휴대폰)'만 골라냄
-  // 2. PC에서 F12(반응형 모드)나 태블릿 브라우저로 열어도 무조건 PC 화면(송출 뷰)이 뜸
-  const ua = navigator.userAgent;
-  const isActualPhone = /Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-  
-  // 만약 폰 화면 너비(768px 미만)이면서 진짜 휴대폰일 때만 리모컨 모드 작동 (?remote가 붙으면 강제 리모컨)
-  const shouldShowRemote = !isScreenParam && (isRemoteParam || (isActualPhone && window.innerWidth < 768));
+  const isRealMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const shouldShowRemote = !isScreenParam && (isRemoteParam || isRealMobileDevice);
 
   if (shouldShowRemote) {
     return <MobileRemote />;
   }
 
-  // --- 이하 방송실 PC 송출 화면 로직 ---
   const [activeTab, setActiveTab] = useState('nonsense');
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(40);
@@ -38,93 +31,87 @@ export default function App() {
   const [audioIndex, setAudioIndex] = useState(0);
   const [isQuizPlaying, setIsQuizPlaying] = useState(false);
 
-  // 리모컨 접속용 고유 PIN (랜덤 4자리)
-  const [roomPin] = useState(() => Math.floor(1000 + Math.random() * 9000).toString());
+  const [roomPin] = useState('1225'); // 성탄절 날짜로 고정 (원하시면 변경 가능)
   const [showRemoteModal, setShowRemoteModal] = useState(false);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
-  const connRef = useRef(null);
+  
+  const connsRef = useRef([]);
+  const peerRef = useRef(null);
+
+  // 💡 [버그 2 해결] 최신 상태를 항상 가리키는 Ref 선언 (신규 접속 시 정확한 값 보장)
+  const currentStateRef = useRef({ activeTab, nonsenseIndex, audioIndex, isQuizPlaying });
+  useEffect(() => {
+    currentStateRef.current = { activeTab, nonsenseIndex, audioIndex, isQuizPlaying };
+    
+    // 상태가 바뀔 때마다 연결된 모든 폰에 즉시 동기화 패킷 전송
+    connsRef.current.forEach((conn) => {
+      if (conn.open) {
+        conn.send({ type: 'SYNC', payload: currentStateRef.current });
+      }
+    });
+  }, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying]);
 
   const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
 
-// 📡 WebRTC PeerJS 호스트 리스너 (스마트폰 여러 대 다중 접속 지원)
-const connsRef = useRef([]);
-
-useEffect(() => {
-  const peer = new Peer(`church-quiz-${roomPin}`, {
-    config: {
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    },
-  });
-
-  peer.on('connection', (conn) => {
-    connsRef.current.push(conn);
-    setIsRemoteConnected(true);
-
-    conn.on('open', () => {
-      conn.send({
-        type: 'SYNC',
-        payload: { activeTab, nonsenseIndex, audioIndex, isQuizPlaying },
-      });
+  // 📡 [버그 1 해결] Peer 객체 생성 시 의존성 배열에서 isQuizPlaying을 완전히 제거하여 음악 켜도 연결이 안 끊김!
+  useEffect(() => {
+    const peer = new Peer(`church-quiz-${roomPin}`, {
+      config: {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      },
     });
+    peerRef.current = peer;
 
-    conn.on('data', (data) => {
-      const { action, payload } = data;
+    peer.on('connection', (conn) => {
+      connsRef.current.push(conn);
+      setIsRemoteConnected(true);
 
-      if (action === 'SET_TAB') setActiveTab(payload);
-      if (action === 'SET_INDEX') {
-        setActiveTab((tab) => {
-          if (tab === 'nonsense') setNonsenseIndex(payload);
-          if (tab === 'audio') setAudioIndex(payload);
-          return tab;
+      // 💡 [버그 2 해결] 새로 접속한 리모컨에게 가장 최신(Current) 상태를 즉시 전달
+      conn.on('open', () => {
+        conn.send({
+          type: 'SYNC',
+          payload: currentStateRef.current,
         });
-      }
-      if (action === 'CLICK_PRIZE') {
-        setActiveTab('prizes');
-        window.dispatchEvent(new CustomEvent('remote-prize-click', { detail: payload }));
-      }
-      if (action === 'TOGGLE_HINT') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h' }));
-      if (action === 'TOGGLE_ANSWER') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
-      if (action === 'PLAY_AUDIO') {
-        if (!isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
-      }
-      if (action === 'PAUSE_AUDIO') {
-        if (isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
-      }
-      if (action === 'RESTART_AUDIO') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
-      if (action === 'CLOSE_MODAL') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-      if (action === 'RESET_PRIZES') handleResetPrizeBoard();
+      });
 
-      // 한쪽에서 누르면 접속된 모든 폰에 상태 동기화 브로드캐스팅
-      connsRef.current.forEach((c) => {
-        if (c.open) {
-          c.send({
-            type: 'SYNC',
-            payload: { activeTab, nonsenseIndex, audioIndex, isQuizPlaying },
+      conn.on('data', (data) => {
+        const { action, payload } = data;
+
+        if (action === 'SET_TAB') setActiveTab(payload);
+        if (action === 'SET_INDEX') {
+          setActiveTab((tab) => {
+            if (tab === 'nonsense') setNonsenseIndex(payload);
+            if (tab === 'audio') setAudioIndex(payload);
+            return tab;
           });
         }
+        if (action === 'CLICK_PRIZE') {
+          setActiveTab('prizes');
+          window.dispatchEvent(new CustomEvent('remote-prize-click', { detail: payload }));
+        }
+        if (action === 'TOGGLE_HINT') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h' }));
+        if (action === 'TOGGLE_ANSWER') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+        if (action === 'PLAY_AUDIO') {
+          if (!currentStateRef.current.isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+        }
+        if (action === 'PAUSE_AUDIO') {
+          if (currentStateRef.current.isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+        }
+        if (action === 'RESTART_AUDIO') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
+        if (action === 'CLOSE_MODAL') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        if (action === 'RESET_PRIZES') handleResetPrizeBoard();
+      });
+
+      conn.on('close', () => {
+        connsRef.current = connsRef.current.filter((c) => c !== conn);
+        if (connsRef.current.length === 0) setIsRemoteConnected(false);
       });
     });
 
-    conn.on('close', () => {
-      connsRef.current = connsRef.current.filter((c) => c !== conn);
-      if (connsRef.current.length === 0) setIsRemoteConnected(false);
-    });
-  });
-
-  return () => peer.destroy();
-}, [roomPin, isQuizPlaying]);
-
-// 상태가 바뀔 때마다 모든 폰에 전송
-useEffect(() => {
-  connsRef.current.forEach((conn) => {
-    if (conn.open) {
-      conn.send({
-        type: 'SYNC',
-        payload: { activeTab, nonsenseIndex, audioIndex, isQuizPlaying },
-      });
-    }
-  });
-}, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying]);
+    return () => {
+      peer.destroy();
+    };
+  }, [roomPin]); // <-- 의존성에서 isQuizPlaying 영구 퇴출 완료
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -203,7 +190,7 @@ useEffect(() => {
             title="스마트폰 무선 리모컨 연결"
           >
             <Smartphone className="w-4 h-4" />
-            {isRemoteConnected ? '리모컨 연결됨 (다중) 🟢' : '📱 모바일 리모컨'}
+            {isRemoteConnected ? '리모컨 연결됨 🟢' : '📱 모바일 리모컨'}
           </button>
 
           {activeTab === 'prizes' && (
