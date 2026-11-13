@@ -14,10 +14,14 @@ export default function App() {
   const isRemoteParam = params.get('remote') === 'true' || params.has('remote');
   const isScreenParam = params.get('screen') === 'true';
 
-  // 🔥 PC에서 F12 눌러도 화면 안 바뀌도록 '화면 너비' 감지 삭제!
-  // 오직 실제 스마트폰 기기이거나 URL에 ?remote가 있을 때만 리모컨으로 실행
-  const isRealMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const shouldShowRemote = !isScreenParam && (isRemoteParam || isRealMobileDevice);
+  // 🔥 수정된 감지 로직:
+  // 1. 아이패드 등 태블릿은 제외하고 오직 '스마트폰(휴대폰)'만 골라냄
+  // 2. PC에서 F12(반응형 모드)나 태블릿 브라우저로 열어도 무조건 PC 화면(송출 뷰)이 뜸
+  const ua = navigator.userAgent;
+  const isActualPhone = /Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  
+  // 만약 폰 화면 너비(768px 미만)이면서 진짜 휴대폰일 때만 리모컨 모드 작동 (?remote가 붙으면 강제 리모컨)
+  const shouldShowRemote = !isScreenParam && (isRemoteParam || (isActualPhone && window.innerWidth < 768));
 
   if (shouldShowRemote) {
     return <MobileRemote />;
