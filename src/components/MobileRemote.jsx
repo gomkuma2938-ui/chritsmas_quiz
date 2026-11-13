@@ -18,6 +18,7 @@ export default function MobileRemote() {
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  const targetPinRef = useRef('1225'); // 재접속 시 참조할 PIN 보관용 Ref
 
   const TABS = [
     { id: 'nonsense', name: '그림 넌센스', count: NONSENSE_QUIZZES.length },
@@ -31,11 +32,25 @@ export default function MobileRemote() {
     const urlPin = params.get('pin');
     if (urlPin) {
       setPin(urlPin);
+      targetPinRef.current = urlPin;
       connectToHost(urlPin);
     }
   }, []);
 
-  // 💡 [개선 권장 3] 자동 재접속(Auto-Reconnect) 루프 탑재
+  // 🛡️ [완벽 보완] close 뿐만 아니라 error 발생 시에도 3초 후 무조건 자동 재접속을 시도하는 통합 함수
+  const triggerAutoReconnect = (cleanPin) => {
+    setIsConnected(false);
+    setIsConnecting(true);
+
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+    }
+
+    reconnectTimerRef.current = setTimeout(() => {
+      connectToHost(cleanPin);
+    }, 3000);
+  };
+
   const connectToHost = (targetPin) => {
     const cleanPin = String(targetPin || '').trim();
     if (!cleanPin) {
@@ -43,13 +58,11 @@ export default function MobileRemote() {
       return;
     }
 
+    targetPinRef.current = cleanPin;
     setIsConnecting(true);
 
     if (peerRef.current) {
       try { peerRef.current.destroy(); } catch (e) {}
-    }
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
     }
 
     const peer = new Peer({
@@ -74,24 +87,27 @@ export default function MobileRemote() {
         }
       });
 
-      // 끊겼을 때 3초 후 자동 재접속 시도
+      // 🔥 연결 종료 시 자동 재접속 트리거
       conn.on('close', () => {
-        setIsConnected(false);
-        setIsConnecting(true);
-        reconnectTimerRef.current = setTimeout(() => {
-          connectToHost(cleanPin);
-        }, 3000);
+        triggerAutoReconnect(cleanPin);
       });
 
+      // 🔥 통신 중 에러 발생 시 자동 재접속 트리거
       conn.on('error', () => {
-        setIsConnected(false);
-        setIsConnecting(false);
+        triggerAutoReconnect(cleanPin);
       });
     });
 
-    peer.on('error', () => {
-      setIsConnected(false);
-      setIsConnecting(false);
+    // 🔥 Peer 객체 자체 에러(네트워크 단절 등) 발생 시 자동 재접속 트리거
+    peer.on('error', (err) => {
+      // 최초 연결 시 PIN 번호가 틀린 경우는 재접속 안 하고 바로 알림
+      if (err.type === 'peer-unavailable') {
+        alert('해당 PIN 번호의 방송실 화면을 찾을 수 없습니다. PIN을 확인하세요.');
+        setIsConnecting(false);
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      } else {
+        triggerAutoReconnect(cleanPin);
+      }
     });
   };
 
@@ -208,94 +224,4 @@ export default function MobileRemote() {
                     className={`h-20 rounded-2xl font-black text-3xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
                       isCurrent
                         ? 'bg-[#076327] text-white border-2 border-[#fdc879] scale-105'
-                        : 'bg-white text-gray-800 border border-gray-200'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'prizes' && (
-          <div className="space-y-1">
-            <p className="text-center text-[11px] font-bold text-gray-500 mb-1">선물 번호판 원격 제어</p>
-            <div className="grid grid-cols-6 gap-1.5 max-w-sm mx-auto w-full px-1 max-h-[50vh] overflow-y-auto">
-              {Array.from({ length: 23 }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendAction('CLICK_PRIZE', i)}
-                  className="h-12 bg-white hover:bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-xl font-black text-lg shadow-sm transition-all active:scale-90 flex items-center justify-center"
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 하단 컨트롤러 */}
-      <div className="flex-shrink-0 space-y-2 pt-1 pb-1">
-        {activeTab === 'audio' && (
-          <div className="grid grid-cols-4 gap-2">
-            <button
-              onClick={() => sendAction(isQuizPlaying ? 'PAUSE_AUDIO' : 'PLAY_AUDIO')}
-              className={`col-span-3 py-3.5 rounded-2xl text-lg font-black text-white shadow-md flex items-center justify-center gap-2 active:scale-95 ${
-                isQuizPlaying ? 'bg-[#fa4134] animate-pulse' : 'bg-[#cb000b]'
-              }`}
-            >
-              {isQuizPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-              {isQuizPlaying ? '일시정지' : '두 곡 재생 🎶'}
-            </button>
-            <button
-              onClick={() => sendAction('RESTART_AUDIO')}
-              className="py-3.5 bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-2xl flex items-center justify-center shadow-md active:scale-95"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-          </div>
-        )}
-
-        {activeTab !== 'prizes' && (
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => sendAction('TOGGLE_HINT')}
-              className="py-3.5 bg-[#fdab23] text-white text-base font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <HelpCircle className="w-5 h-5" /> 힌트 열기/닫기
-            </button>
-
-            <button
-              onClick={() => sendAction('TOGGLE_ANSWER')}
-              className="py-3.5 bg-[#cb000b] text-white text-base font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <Eye className="w-5 h-5" /> 정답 열기/닫기
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'prizes' && (
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => sendAction('CLOSE_MODAL')}
-              className="py-3.5 bg-gray-700 text-white text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <X className="w-4 h-4" /> 팝업 닫기 (ESC)
-            </button>
-
-            <button
-              onClick={() => sendAction('RESET_PRIZES')}
-              className="py-3.5 bg-red-100 text-[#cb000b] border border-red-200 text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <RefreshCw className="w-4 h-4" /> 뽑기판 전체 리셋
-            </button>
-          </div>
-        )}
-      </div>
-
-    </div>
-  );
-}
+                        : 'bg-white text-gray-800 border border-gra
