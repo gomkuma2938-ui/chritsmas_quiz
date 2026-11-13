@@ -203,7 +203,7 @@ useEffect(() => {
             title="스마트폰 무선 리모컨 연결"
           >
             <Smartphone className="w-4 h-4" />
-            {isRemoteConnected ? '리모컨 연결됨 🟢' : '📱 모바일 리모컨'}
+            {isRemoteConnected ? '리모컨 연결됨 (다중) 🟢' : '📱 모바일 리모컨'}
           </button>
 
           {activeTab === 'prizes' && (
