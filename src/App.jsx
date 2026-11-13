@@ -37,7 +37,7 @@ export default function App() {
   const [audioIndex, setAudioIndex] = useState(0);
   const [isQuizPlaying, setIsQuizPlaying] = useState(false);
 
-  const [roomPin] = useState('1225'); // 성탄절 날짜로 고정 (원하시면 변경 가능)
+  const [roomPin] = useState(() => Math.floor(1000 + Math.random() * 9000).toString());
   const [showRemoteModal, setShowRemoteModal] = useState(false);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
   
