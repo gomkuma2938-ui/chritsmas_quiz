@@ -5,7 +5,7 @@ import { Play, Pause, RotateCcw, HelpCircle, Eye, X, Smartphone, RefreshCw } fro
 import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from '../data/quizData';
 
 export default function MobileRemote() {
-  const [pin, setPin] = useState('');
+  const [pin, setPin] = useState('1225');
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [gameState, setGameState] = useState({
@@ -17,6 +17,7 @@ export default function MobileRemote() {
 
   const peerRef = useRef(null);
   const connRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
 
   const TABS = [
     { id: 'nonsense', name: '그림 넌센스', count: NONSENSE_QUIZZES.length },
@@ -24,7 +25,7 @@ export default function MobileRemote() {
     { id: 'prizes', name: '선물 뽑기판', count: 23 },
   ];
 
-  // QR 접속 시 URL에 pin=... 있으면 자동 연결
+  // URL에서 PIN 감지
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlPin = params.get('pin');
@@ -34,7 +35,7 @@ export default function MobileRemote() {
     }
   }, []);
 
-  // 🔥 PIN 수동 연결 버그 수정: 공백 제거, 에러 경고창, 연결 중 피드백 추가
+  // 💡 [개선 권장 3] 자동 재접속(Auto-Reconnect) 루프 탑재
   const connectToHost = (targetPin) => {
     const cleanPin = String(targetPin || '').trim();
     if (!cleanPin) {
@@ -46,6 +47,9 @@ export default function MobileRemote() {
 
     if (peerRef.current) {
       try { peerRef.current.destroy(); } catch (e) {}
+    }
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
     }
 
     const peer = new Peer({
@@ -70,23 +74,23 @@ export default function MobileRemote() {
         }
       });
 
+      // 끊겼을 때 3초 후 자동 재접속 시도
       conn.on('close', () => {
         setIsConnected(false);
-        setIsConnecting(false);
+        setIsConnecting(true);
+        reconnectTimerRef.current = setTimeout(() => {
+          connectToHost(cleanPin);
+        }, 3000);
       });
 
       conn.on('error', () => {
-        alert('연결에 실패했습니다. 방송실 PIN 번호를 확인해주세요.');
+        setIsConnected(false);
         setIsConnecting(false);
       });
     });
 
-    peer.on('error', (err) => {
-      if (err.type === 'peer-unavailable') {
-        alert('해당 PIN 번호의 방송실 화면을 찾을 수 없습니다.');
-      } else {
-        alert('연결 오류가 발생했습니다. 다시 시도해주세요.');
-      }
+    peer.on('error', () => {
+      setIsConnected(false);
       setIsConnecting(false);
     });
   };
@@ -97,7 +101,6 @@ export default function MobileRemote() {
     }
   };
 
-  // 1. PIN 번호 입력 화면
   if (!isConnected) {
     return (
       <div className="h-[100dvh] max-h-[100dvh] bg-[#fdf4e8] flex flex-col justify-center items-center p-6 text-center select-none font-sans overflow-hidden">
@@ -105,7 +108,7 @@ export default function MobileRemote() {
           <Smartphone className="w-8 h-8" />
         </div>
         <h2 className="text-2xl font-black text-[#cb000b] mb-1">사회자 무선 리모컨</h2>
-        <p className="text-xs font-bold text-gray-500 mb-6">방송실 화면에 떠 있는 PIN 4자리를 입력하세요</p>
+        <p className="text-xs font-bold text-gray-500 mb-6">방송실 화면의 PIN 번호(기본 1225)를 확인하세요</p>
 
         <div className="w-full max-w-xs space-y-3">
           <input
@@ -120,24 +123,23 @@ export default function MobileRemote() {
             disabled={isConnecting}
             className="w-full py-4 bg-[#cb000b] disabled:bg-gray-400 text-white text-xl font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            {isConnecting ? '방송실 연결 중...' : '방송실 화면 연결'}
+            {isConnecting ? '방송실 재연결 중...' : '방송실 화면 연결'}
           </button>
         </div>
       </div>
     );
   }
 
-  // 2. 연결 완료 시: h-[100dvh]로 스크롤을 완전히 없애고 하단 버튼 밀착
   const { activeTab, nonsenseIndex, audioIndex, isQuizPlaying } = gameState;
 
   return (
     <div className="h-[100dvh] max-h-[100dvh] bg-[#fdf4e8] flex flex-col justify-between p-3 select-none font-sans text-gray-800 overflow-hidden">
       
-      {/* 상단 탭 선택 바 */}
+      {/* 상단 탭 선택 */}
       <div className="flex-shrink-0 space-y-1.5">
         <div className="flex justify-between items-center bg-white px-3.5 py-1.5 rounded-xl shadow-sm border border-[#fdc879]">
           <span className="text-[11px] font-black text-[#076327] flex items-center gap-1.5">
-            <span className="w-2 h-2 bg-[#076327] rounded-full animate-pulse" /> 방송실 연결됨
+            <span className="w-2 h-2 bg-[#076327] rounded-full animate-pulse" /> 방송실 연결됨 (실시간 동기화)
           </span>
           <span className="text-[11px] font-bold text-gray-400">PIN: {pin}</span>
         </div>
@@ -163,76 +165,80 @@ export default function MobileRemote() {
         </div>
       </div>
 
-      {/* 중앙 다이렉트 번호 패드 (남는 공간에 맞춤) */}
+      {/* 중앙 다이렉트 번호 패드 */}
       <div className="flex-1 min-h-0 flex flex-col justify-center my-1 overflow-hidden">
-        
-        {/* 넌센스 번호판 */}
         {activeTab === 'nonsense' && (
-          <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto w-full px-2">
-            {Array.from({ length: NONSENSE_QUIZZES.length }, (_, i) => {
-              const isCurrent = nonsenseIndex === i;
-              return (
-                <button
-                  key={i}
-                  onClick={() => sendAction('SET_INDEX', i)}
-                  className={`h-16 rounded-2xl font-black text-2xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
-                    isCurrent
-                      ? 'bg-[#cb000b] text-white border-2 border-[#fdc879] scale-105'
-                      : 'bg-white text-gray-800 border border-gray-200'
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              );
-            })}
+          <div className="space-y-1">
+            <p className="text-center text-[11px] font-bold text-gray-500 mb-1">
+              현재 스크린 문제 번호: <span className="text-[#cb000b] font-black">{nonsenseIndex + 1}번</span>
+            </p>
+            <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto w-full px-2">
+              {Array.from({ length: NONSENSE_QUIZZES.length }, (_, i) => {
+                const isCurrent = nonsenseIndex === i;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => sendAction('SET_INDEX', i)}
+                    className={`h-16 rounded-2xl font-black text-2xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
+                      isCurrent
+                        ? 'bg-[#cb000b] text-white border-2 border-[#fdc879] scale-105'
+                        : 'bg-white text-gray-800 border border-gray-200'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
-        {/* 찬양 퀴즈 번호판 */}
         {activeTab === 'audio' && (
-          <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto w-full px-2">
-            {Array.from({ length: DUAL_AUDIO_QUIZZES.length }, (_, i) => {
-              const isCurrent = audioIndex === i;
-              return (
-                <button
-                  key={i}
-                  onClick={() => sendAction('SET_INDEX', i)}
-                  className={`h-20 rounded-2xl font-black text-3xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
-                    isCurrent
-                      ? 'bg-[#076327] text-white border-2 border-[#fdc879] scale-105'
-                      : 'bg-white text-gray-800 border border-gray-200'
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              );
-            })}
+          <div className="space-y-1">
+            <p className="text-center text-[11px] font-bold text-gray-500 mb-1">
+              현재 스크린 찬양 퀴즈: <span className="text-[#076327] font-black">{audioIndex + 1}번</span>
+            </p>
+            <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto w-full px-2">
+              {Array.from({ length: DUAL_AUDIO_QUIZZES.length }, (_, i) => {
+                const isCurrent = audioIndex === i;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => sendAction('SET_INDEX', i)}
+                    className={`h-20 rounded-2xl font-black text-3xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
+                      isCurrent
+                        ? 'bg-[#076327] text-white border-2 border-[#fdc879] scale-105'
+                        : 'bg-white text-gray-800 border border-gray-200'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
-        {/* 선물 1~23번 번호판 */}
         {activeTab === 'prizes' && (
-          <div className="grid grid-cols-6 gap-1.5 max-w-sm mx-auto w-full px-1">
-            {Array.from({ length: 23 }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => sendAction('CLICK_PRIZE', i)}
-                className="h-12 bg-white hover:bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-xl font-black text-lg shadow-sm transition-all active:scale-90 flex items-center justify-center"
-              >
-                {i + 1}
-              </button>
-            ))}
+          <div className="space-y-1">
+            <p className="text-center text-[11px] font-bold text-gray-500 mb-1">선물 번호판 원격 제어</p>
+            <div className="grid grid-cols-6 gap-1.5 max-w-sm mx-auto w-full px-1 max-h-[50vh] overflow-y-auto">
+              {Array.from({ length: 23 }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => sendAction('CLICK_PRIZE', i)}
+                  className="h-12 bg-white hover:bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-xl font-black text-lg shadow-sm transition-all active:scale-90 flex items-center justify-center"
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* 
-        하단 컨트롤러:
-        화면 최하단에 무조건 붙어서 스크롤 없이 100% 노출
-      */}
+      {/* 하단 컨트롤러 */}
       <div className="flex-shrink-0 space-y-2 pt-1 pb-1">
-        
-        {/* 찬양 오디오 제어 버튼 */}
         {activeTab === 'audio' && (
           <div className="grid grid-cols-4 gap-2">
             <button
@@ -253,7 +259,6 @@ export default function MobileRemote() {
           </div>
         )}
 
-        {/* 힌트 / 정답 버튼 */}
         {activeTab !== 'prizes' && (
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -272,7 +277,6 @@ export default function MobileRemote() {
           </div>
         )}
 
-        {/* 선물 모달 닫기 (ESC) & 리셋 버튼 */}
         {activeTab === 'prizes' && (
           <div className="grid grid-cols-2 gap-2">
             <button
