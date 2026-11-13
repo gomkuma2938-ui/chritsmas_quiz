@@ -10,6 +10,16 @@ import MobileRemote from './components/MobileRemote';
 import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from './data/quizData';
 
 export default function App() {
+  // 🔥 접속 기기가 스마트폰인지 자동 감지 + QR코드(?remote=true) 접속 감지
+  const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+  const isRemoteParam = window.location.search.includes('remote');
+
+  // 스마트폰으로 들어왔거나, 리모컨 링크로 들어왔으면 무조건 리모컨 화면으로 띄움!
+  if (isRemoteParam || isMobileDevice) {
+    return <MobileRemote />;
+  }
+
+export default function App() {
   // 모바일 접속(?remote=true) 시 리모컨 화면 렌더링
   if (window.location.search.includes('remote')) {
     return <MobileRemote />;
