@@ -15,7 +15,6 @@ export default function PrizeBoard() {
 
   const [zoomedIndex, setZoomedIndex] = useState(null);
 
-  // 카드 클릭 시 뒤집기 & 모달 팝업 열기
   const handleCardClick = (idx) => {
     if (!openedCards[idx]) {
       const updated = { ...openedCards, [idx]: true };
@@ -29,7 +28,16 @@ export default function PrizeBoard() {
     setZoomedIndex(idx);
   };
 
-  // ⌨️ ESC 누르면 열린 선물 팝업 즉시 닫기
+  // 🔥 사회자 폰에서 원격으로 1~23번 카드 번호를 눌렀을 때 즉시 화면에서 오픈하는 이벤트 리스너
+  useEffect(() => {
+    const handleRemoteClick = (e) => {
+      handleCardClick(e.detail);
+    };
+    window.addEventListener('remote-prize-click', handleRemoteClick);
+    return () => window.removeEventListener('remote-prize-click', handleRemoteClick);
+  }, [openedCards]);
+
+  // ESC 단축키
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -53,8 +61,6 @@ export default function PrizeBoard() {
       <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-3.5 md:gap-4">
         {INITIAL_PRIZES.map((prize, idx) => {
           const isFlipped = !!openedCards[idx];
-          
-          {/* 체스판(지그재그) 패턴 공식 (6열 기준 유지) */}
           const isEven = (Math.floor(idx / 6) + idx) % 2 === 0;
           const bgClass = isEven ? 'bg-[#cb000b] hover:bg-[#fa4134]' : 'bg-[#15803d] hover:bg-[#16a34a]';
 
@@ -69,14 +75,12 @@ export default function PrizeBoard() {
                   isFlipped ? 'rotate-y-180' : ''
                 }`}
               >
-                {/* 앞면: 교차되는 빨강/초록 컬러 적용 */}
                 <div className={`absolute inset-0 w-full h-full ${bgClass} rounded-2xl shadow-md flex items-center justify-center backface-hidden transition-colors`}>
                   <span className="text-4xl md:text-5xl font-black text-white">
                     {idx + 1}
                   </span>
                 </div>
 
-                {/* 뒷면: 선물 텍스트만 깔끔 노출 */}
                 <div className="absolute inset-0 w-full h-full bg-[#fdf4e8] text-[#cb000b] rounded-2xl border-2 border-[#fdab23] p-3 flex items-center justify-center text-center backface-hidden rotate-y-180 shadow-md">
                   <div className="text-base md:text-lg font-black leading-snug break-keep text-[#cb000b] line-clamp-2">
                     {prize}
@@ -88,10 +92,7 @@ export default function PrizeBoard() {
         })}
       </div>
 
-      {/* 
-        🎁 특대형 선물 모달: 
-        상단 Gift 벡터 배지 + 플라크 프레임 레이아웃 (ESC로 닫기 지원)
-      */}
+      {/* 🎁 특대형 선물 모달 */}
       {zoomedIndex !== null && (
         <div 
           onClick={() => setZoomedIndex(null)}
@@ -108,7 +109,6 @@ export default function PrizeBoard() {
               <X className="w-7 h-7" />
             </button>
 
-            {/* 선물 심볼 아이콘 */}
             <div className="w-16 h-16 mx-auto mb-3 bg-[#fdab23] rounded-2xl flex items-center justify-center text-white shadow-md">
               <Gift className="w-9 h-9 stroke-[2.2]" />
             </div>
@@ -117,7 +117,6 @@ export default function PrizeBoard() {
               LUCKY GIFT NO. {zoomedIndex + 1}
             </span>
 
-            {/* 선물 내용 플라크 */}
             <div className="mt-6 bg-[#fdf4e8] rounded-2xl p-6 md:p-8 border border-[#fdc879] shadow-inner">
               <div className="text-4xl md:text-5xl font-black text-[#cb000b] my-2 leading-tight break-keep">
                 {INITIAL_PRIZES[zoomedIndex]}
