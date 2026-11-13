@@ -46,70 +46,85 @@ export default function App() {
 
   const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
 
-  // 📡 WebRTC PeerJS 호스트 리스너
-  useEffect(() => {
-    const peer = new Peer(`church-quiz-${roomPin}`, {
-      config: {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-      },
+// 📡 WebRTC PeerJS 호스트 리스너 (스마트폰 여러 대 다중 접속 지원)
+const connsRef = useRef([]);
+
+useEffect(() => {
+  const peer = new Peer(`church-quiz-${roomPin}`, {
+    config: {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    },
+  });
+
+  peer.on('connection', (conn) => {
+    connsRef.current.push(conn);
+    setIsRemoteConnected(true);
+
+    conn.on('open', () => {
+      conn.send({
+        type: 'SYNC',
+        payload: { activeTab, nonsenseIndex, audioIndex, isQuizPlaying },
+      });
     });
 
-    peer.on('connection', (conn) => {
-      connRef.current = conn;
-      setIsRemoteConnected(true);
+    conn.on('data', (data) => {
+      const { action, payload } = data;
 
-      conn.on('data', (data) => {
-        const { action, payload } = data;
+      if (action === 'SET_TAB') setActiveTab(payload);
+      if (action === 'SET_INDEX') {
+        setActiveTab((tab) => {
+          if (tab === 'nonsense') setNonsenseIndex(payload);
+          if (tab === 'audio') setAudioIndex(payload);
+          return tab;
+        });
+      }
+      if (action === 'CLICK_PRIZE') {
+        setActiveTab('prizes');
+        window.dispatchEvent(new CustomEvent('remote-prize-click', { detail: payload }));
+      }
+      if (action === 'TOGGLE_HINT') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h' }));
+      if (action === 'TOGGLE_ANSWER') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+      if (action === 'PLAY_AUDIO') {
+        if (!isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+      }
+      if (action === 'PAUSE_AUDIO') {
+        if (isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+      }
+      if (action === 'RESTART_AUDIO') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
+      if (action === 'CLOSE_MODAL') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      if (action === 'RESET_PRIZES') handleResetPrizeBoard();
 
-        if (action === 'SET_TAB') setActiveTab(payload);
-        if (action === 'SET_INDEX') {
-          setActiveTab((tab) => {
-            if (tab === 'nonsense') setNonsenseIndex(payload);
-            if (tab === 'audio') setAudioIndex(payload);
-            return tab;
+      // 한쪽에서 누르면 접속된 모든 폰에 상태 동기화 브로드캐스팅
+      connsRef.current.forEach((c) => {
+        if (c.open) {
+          c.send({
+            type: 'SYNC',
+            payload: { activeTab, nonsenseIndex, audioIndex, isQuizPlaying },
           });
         }
-        if (action === 'CLICK_PRIZE') {
-          setActiveTab('prizes');
-          window.dispatchEvent(new CustomEvent('remote-prize-click', { detail: payload }));
-        }
-        if (action === 'TOGGLE_HINT') {
-          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h' }));
-        }
-        if (action === 'TOGGLE_ANSWER') {
-          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
-        }
-        if (action === 'PLAY_AUDIO') {
-          if (!isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
-        }
-        if (action === 'PAUSE_AUDIO') {
-          if (isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
-        }
-        if (action === 'RESTART_AUDIO') {
-          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
-        }
-        if (action === 'CLOSE_MODAL') {
-          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-        }
-        if (action === 'RESET_PRIZES') {
-          handleResetPrizeBoard();
-        }
       });
-
-      conn.on('close', () => setIsRemoteConnected(false));
     });
 
-    return () => peer.destroy();
-  }, [roomPin, isQuizPlaying]);
+    conn.on('close', () => {
+      connsRef.current = connsRef.current.filter((c) => c !== conn);
+      if (connsRef.current.length === 0) setIsRemoteConnected(false);
+    });
+  });
 
-  useEffect(() => {
-    if (connRef.current && isRemoteConnected) {
-      connRef.current.send({
+  return () => peer.destroy();
+}, [roomPin, isQuizPlaying]);
+
+// 상태가 바뀔 때마다 모든 폰에 전송
+useEffect(() => {
+  connsRef.current.forEach((conn) => {
+    if (conn.open) {
+      conn.send({
         type: 'SYNC',
         payload: { activeTab, nonsenseIndex, audioIndex, isQuizPlaying },
       });
     }
-  }, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying, isRemoteConnected]);
+  });
+}, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
