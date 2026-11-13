@@ -37,7 +37,7 @@ export default function App() {
   const [audioIndex, setAudioIndex] = useState(0);
   const [isQuizPlaying, setIsQuizPlaying] = useState(false);
 
-  const [roomPin] = useState(() => Math.floor(1000 + Math.random() * 9000).toString());
+  const [roomPin] = useState('4259');
   const [showRemoteModal, setShowRemoteModal] = useState(false);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
   
