@@ -31,7 +31,6 @@ export default function App() {
   const [audioIndex, setAudioIndex] = useState(0);
   const [isQuizPlaying, setIsQuizPlaying] = useState(false);
 
-  // 🎁 뽑기판 상태 보관용
   const [openedCards, setOpenedCards] = useState(() => {
     try {
       const saved = localStorage.getItem('christmas_gift_board_state');
@@ -48,7 +47,6 @@ export default function App() {
   const connsRef = useRef([]);
   const peerRef = useRef(null);
 
-  // 최신 상태 Ref에 openedCards 포함
   const currentStateRef = useRef({ activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards });
   useEffect(() => {
     currentStateRef.current = { activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards };
@@ -59,7 +57,6 @@ export default function App() {
     });
   }, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards]);
 
-  // PrizeBoard에서 카드 열렸을 때 수신
   useEffect(() => {
     const handlePrizeUpdate = (e) => {
       setOpenedCards(e.detail);
@@ -132,13 +129,27 @@ export default function App() {
     }
   };
 
+  // 🔥 리셋 실행 시: 로컬 스토리지 삭제 + State 비우기 + 모든 리모컨에 즉시 openedCards: {} 패킷 강제 전송!
   const handleResetPrizeBoard = () => {
     try {
       localStorage.removeItem('christmas_gift_board_state');
     } catch (e) {}
+    
     setOpenedCards({});
     setPrizeResetKey((prev) => prev + 1);
     window.dispatchEvent(new CustomEvent('prize-board-updated', { detail: {} }));
+
+    connsRef.current.forEach((conn) => {
+      if (conn.open) {
+        conn.send({
+          type: 'SYNC',
+          payload: {
+            ...currentStateRef.current,
+            openedCards: {},
+          },
+        });
+      }
+    });
   };
 
   const remoteUrl = `${window.location.origin}${window.location.pathname}?remote=true&pin=${roomPin}`;
