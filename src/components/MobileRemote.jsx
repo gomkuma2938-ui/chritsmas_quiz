@@ -1,385 +1,294 @@
-// src/components/MobileRemote.jsx
+// src/App.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import Peer from 'peerjs';
-import { Play, Pause, RotateCcw, HelpCircle, Eye, X, Smartphone, RefreshCw } from 'lucide-react';
-import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from '../data/quizData';
+import { Image as ImageIcon, Music, Gift, Maximize, Minimize, RotateCcw, Smartphone, X } from 'lucide-react';
+import BgmPlayer from './components/BgmPlayer';
+import ImageNonsenseQuiz from './components/ImageNonsenseQuiz';
+import DualAudioQuiz from './components/DualAudioQuiz';
+import PrizeBoard from './components/PrizeBoard';
+import MobileRemote from './components/MobileRemote';
+import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from './data/quizData';
 
-export default function MobileRemote() {
-  const [pin, setPin] = useState('4259');
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [gameState, setGameState] = useState({
-    activeTab: 'nonsense',
-    nonsenseIndex: 0,
-    audioIndex: 0,
-    isQuizPlaying: false,
-    openedCards: {},
+export default function App() {
+  const params = new URLSearchParams(window.location.search);
+  const isRemoteParam = params.get('remote') === 'true' || params.has('remote');
+  const isScreenParam = params.get('screen') === 'true';
+
+  const isRealMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const shouldShowRemote = !isScreenParam && (isRemoteParam || (isRealMobileDevice && window.innerWidth < 768));
+
+  if (shouldShowRemote) {
+    return <MobileRemote />;
+  }
+
+  const [activeTab, setActiveTab] = useState('nonsense');
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(40);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [prizeResetKey, setPrizeResetKey] = useState(0);
+
+  const [nonsenseIndex, setNonsenseIndex] = useState(0);
+  const [audioIndex, setAudioIndex] = useState(0);
+  const [isQuizPlaying, setIsQuizPlaying] = useState(false);
+
+  const [openedCards, setOpenedCards] = useState(() => {
+    try {
+      const saved = localStorage.getItem('christmas_gift_board_state');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
   });
 
+  const [roomPin] = useState('4259');
+  const [showRemoteModal, setShowRemoteModal] = useState(false);
+  const [isRemoteConnected, setIsRemoteConnected] = useState(false);
+  
+  const connsRef = useRef([]);
   const peerRef = useRef(null);
-  const connRef = useRef(null);
-  const reconnectTimerRef = useRef(null);
-  const attemptIdRef = useRef(0);
 
-  const TABS = [
-    { id: 'nonsense', name: '그림 넌센스', count: NONSENSE_QUIZZES.length },
-    { id: 'audio', name: '찬양 동시듣기', count: DUAL_AUDIO_QUIZZES.length },
-    { id: 'prizes', name: '선물 뽑기판', count: 23 },
-  ];
+  const currentStateRef = useRef({ activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards });
+  useEffect(() => {
+    currentStateRef.current = { activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards };
+    connsRef.current.forEach((conn) => {
+      if (conn.open) {
+        conn.send({ type: 'SYNC', payload: currentStateRef.current });
+      }
+    });
+  }, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlPin = params.get('pin');
-    if (urlPin) {
-      setPin(urlPin);
-      connectToHost(urlPin);
-    }
-
-    return () => {
-      attemptIdRef.current++;
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      if (connRef.current) {
-        try { connRef.current.close(); } catch (e) {}
-        connRef.current = null;
-      }
-      if (peerRef.current) {
-        try { peerRef.current.destroy(); } catch (e) {}
-        peerRef.current = null;
-      }
+    const handlePrizeUpdate = (e) => {
+      setOpenedCards(e.detail);
     };
+    window.addEventListener('prize-board-updated', handlePrizeUpdate);
+    return () => window.removeEventListener('prize-board-updated', handlePrizeUpdate);
   }, []);
 
-  const connectToHost = (targetPin) => {
-    const cleanPin = String(targetPin || '').trim();
-    if (!cleanPin) {
-      alert('방송실 화면에 떠 있는 PIN 4자리를 입력해주세요.');
-      return;
-    }
+  const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
 
-    setIsConnecting(true);
-    const currentAttemptId = ++attemptIdRef.current;
-
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = null;
-    }
-    if (connRef.current) {
-      try { connRef.current.close(); } catch (e) {}
-      connRef.current = null;
-    }
-    if (peerRef.current) {
-      try {
-        peerRef.current.removeAllListeners();
-        peerRef.current.destroy();
-      } catch (e) {}
-      peerRef.current = null;
-    }
-
-    const currentPeer = new Peer({
-      config: {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-      },
+  useEffect(() => {
+    const peer = new Peer(`church-quiz-${roomPin}`, {
+      config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] },
     });
-    peerRef.current = currentPeer;
+    peerRef.current = peer;
 
-    currentPeer.on('open', () => {
-      if (currentAttemptId !== attemptIdRef.current) return;
-
-      const conn = currentPeer.connect(`church-quiz-${cleanPin}`);
-      connRef.current = conn;
+    peer.on('connection', (conn) => {
+      connsRef.current.push(conn);
+      setIsRemoteConnected(true);
 
       conn.on('open', () => {
-        if (currentAttemptId !== attemptIdRef.current) {
-          conn.close();
-          return;
-        }
-        if (reconnectTimerRef.current) {
-          clearTimeout(reconnectTimerRef.current);
-          reconnectTimerRef.current = null;
-        }
-        setIsConnected(true);
-        setIsConnecting(false);
+        conn.send({
+          type: 'SYNC',
+          payload: currentStateRef.current,
+        });
       });
 
       conn.on('data', (data) => {
-        if (currentAttemptId !== attemptIdRef.current) return;
-        if (data.type === 'SYNC') {
-          setGameState(data.payload);
+        const { action, payload } = data;
+
+        if (action === 'SET_TAB') setActiveTab(payload);
+        if (action === 'SET_INDEX') {
+          setActiveTab((tab) => {
+            if (tab === 'nonsense') setNonsenseIndex(payload);
+            if (tab === 'audio') setAudioIndex(payload);
+            return tab;
+          });
         }
+        if (action === 'CLICK_PRIZE') {
+          setActiveTab('prizes');
+          window.dispatchEvent(new CustomEvent('remote-prize-click', { detail: payload }));
+        }
+        if (action === 'TOGGLE_HINT') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h' }));
+        if (action === 'TOGGLE_ANSWER') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+        if (action === 'PLAY_AUDIO') {
+          if (!currentStateRef.current.isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+        }
+        if (action === 'PAUSE_AUDIO') {
+          if (currentStateRef.current.isQuizPlaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+        }
+        if (action === 'RESTART_AUDIO') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
+        if (action === 'CLOSE_MODAL') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        if (action === 'RESET_PRIZES') handleResetPrizeBoard();
       });
 
-      const handleDisconnect = () => {
-        if (currentAttemptId !== attemptIdRef.current) return;
-        setIsConnected(false);
-        setIsConnecting(true);
-
-        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = setTimeout(() => {
-          if (currentAttemptId === attemptIdRef.current) {
-            connectToHost(cleanPin);
-          }
-        }, 3000);
-      };
-
-      conn.on('close', handleDisconnect);
-      conn.on('error', handleDisconnect);
+      conn.on('close', () => {
+        connsRef.current = connsRef.current.filter((c) => c !== conn);
+        if (connsRef.current.length === 0) setIsRemoteConnected(false);
+      });
     });
 
-    currentPeer.on('error', (err) => {
-      if (currentAttemptId !== attemptIdRef.current) return;
-      
-      if (err.type === 'peer-unavailable') {
-        alert('해당 PIN 번호의 방송실 화면을 찾을 수 없습니다. 번호를 다시 확인해주세요.');
-        setIsConnected(false);
-        setIsConnecting(false);
-        if (reconnectTimerRef.current) {
-          clearTimeout(reconnectTimerRef.current);
-          reconnectTimerRef.current = null;
-        }
-      } else {
-        setIsConnected(false);
-        setIsConnecting(true);
-        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = setTimeout(() => {
-          if (currentAttemptId === attemptIdRef.current) {
-            connectToHost(cleanPin);
-          }
-        }, 3000);
-      }
-    });
-  };
+    return () => peer.destroy();
+  }, [roomPin]);
 
-  const sendAction = (action, payload = null) => {
-    if (connRef.current && isConnected) {
-      connRef.current.send({ action, payload });
-      if (action === 'CLICK_PRIZE') {
-        setGameState((prev) => ({
-          ...prev,
-          openedCards: { ...prev.openedCards, [payload]: true },
-        }));
-      }
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen().then(() => setIsFullscreen(false));
     }
   };
 
-  if (!isConnected) {
-    return (
-      <div className="h-[100dvh] max-h-[100dvh] bg-[#fdf4e8] flex flex-col justify-center items-center p-6 text-center select-none font-sans overflow-hidden">
-        <div className="w-16 h-16 bg-[#cb000b] text-white rounded-3xl flex items-center justify-center mb-4 shadow-lg">
-          <Smartphone className="w-8 h-8" />
-        </div>
-        <h2 className="text-2xl font-black text-[#cb000b] mb-1">사회자 무선 리모컨</h2>
-        <p className="text-xs font-bold text-gray-500 mb-6">방송실 화면의 PIN 번호(기본 4259)를 확인하세요</p>
+  // 🔥 리셋 실행 시: 로컬 스토리지 삭제 + State 비우기 + 모든 리모컨에 즉시 openedCards: {} 패킷 강제 전송!
+  const handleResetPrizeBoard = () => {
+    try {
+      localStorage.removeItem('christmas_gift_board_state');
+    } catch (e) {}
+    
+    setOpenedCards({});
+    setPrizeResetKey((prev) => prev + 1);
+    window.dispatchEvent(new CustomEvent('prize-board-updated', { detail: {} }));
 
-        <div className="w-full max-w-xs space-y-3">
-          <input
-            type="number"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="PIN 번호 4자리"
-            className="w-full py-4 text-center text-3xl font-black tracking-widest rounded-2xl border-2 border-[#fdab23] bg-white outline-none focus:border-[#cb000b] shadow-inner"
-          />
-          <button
-            onClick={() => connectToHost(pin)}
-            className="w-full py-4 bg-[#cb000b] hover:bg-[#fa4134] text-white text-xl font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            {isConnecting ? '방송실 연결/재시도 중...' : '방송실 화면 연결'}
-          </button>
-        </div>
-      </div>
-    );
-  }
+    connsRef.current.forEach((conn) => {
+      if (conn.open) {
+        conn.send({
+          type: 'SYNC',
+          payload: {
+            ...currentStateRef.current,
+            openedCards: {},
+          },
+        });
+      }
+    });
+  };
 
-  const { activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards = {} } = gameState;
-  const currentNonsense = NONSENSE_QUIZZES[nonsenseIndex] || NONSENSE_QUIZZES[0];
-  const currentAudio = DUAL_AUDIO_QUIZZES[audioIndex] || DUAL_AUDIO_QUIZZES[0];
+  const remoteUrl = `${window.location.origin}${window.location.pathname}?remote=true&pin=${roomPin}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(remoteUrl)}`;
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] bg-[#fdf4e8] flex flex-col justify-between p-3 select-none font-sans text-gray-800 overflow-hidden">
-      
-      {/* 상단 탭 선택 바 */}
-      <div className="flex-shrink-0 space-y-1.5">
-        <div className="flex justify-between items-center bg-white px-3.5 py-1.5 rounded-xl shadow-sm border border-[#fdc879]">
-          <span className="text-[11px] font-black text-[#076327] flex items-center gap-1.5">
-            <span className="w-2 h-2 bg-[#076327] rounded-full animate-pulse" /> 리모컨 연결됨
-          </span>
-          <span className="text-[11px] font-bold text-gray-400">PIN: {pin}</span>
-        </div>
-
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => sendAction('SET_TAB', tab.id)}
-                className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 shadow-sm ${
-                  isActive ? 'bg-[#cb000b] text-white' : 'bg-white text-gray-600 border border-gray-200'
-                }`}
-              >
-                <span>{tab.name}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/20' : 'bg-gray-100'}`}>
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 중앙: 번호판 및 정답 */}
-      <div className="flex-1 min-h-0 flex flex-col justify-center my-1 overflow-y-auto px-1">
-        
-        {/* 1. 넌센스 탭 */}
-        {activeTab === 'nonsense' && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto w-full">
-              {Array.from({ length: NONSENSE_QUIZZES.length }, (_, i) => {
-                const isCurrent = nonsenseIndex === i;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => sendAction('SET_INDEX', i)}
-                    className={`h-14 rounded-2xl font-black text-xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
-                      isCurrent
-                        ? 'bg-[#cb000b] text-white border-2 border-[#fdc879] scale-105'
-                        : 'bg-white text-gray-800 border border-gray-200'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="bg-[#cb000b] text-white py-4 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-sm mx-auto w-full">
-              <div className="text-3xl md:text-4xl font-black text-yellow-300 drop-shadow-sm leading-tight break-keep">
-                {currentNonsense.a}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 2. 찬양 탭 */}
-        {activeTab === 'audio' && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2.5 max-w-xs mx-auto w-full">
-              {Array.from({ length: DUAL_AUDIO_QUIZZES.length }, (_, i) => {
-                const isCurrent = audioIndex === i;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => sendAction('SET_INDEX', i)}
-                    className={`h-16 rounded-2xl font-black text-2xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
-                      isCurrent
-                        ? 'bg-[#076327] text-white border-2 border-[#fdc879] scale-105'
-                        : 'bg-white text-gray-800 border border-gray-200'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="bg-[#076327] text-white py-3.5 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-xs mx-auto w-full space-y-1">
-              <div className="text-lg md:text-xl font-black text-yellow-300 leading-snug break-keep">
-                A: {currentAudio.songA.title}
-              </div>
-              <div className="text-lg md:text-xl font-black text-white leading-snug break-keep">
-                B: {currentAudio.songB.title}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 3. 선물 뽑기판 탭: 중앙에 '단 1개만' 위치 (취소선 없이 깔끔한 회색 음영) */}
-        {activeTab === 'prizes' && (
-          <div className="space-y-1">
-            <div className="grid grid-cols-5 gap-2 max-w-sm mx-auto w-full">
-              {Array.from({ length: 23 }, (_, i) => {
-                const isOpened = Boolean(openedCards && openedCards[i]);
-                return (
-                  <button
-                    key={i}
-                    onClick={() => sendAction('CLICK_PRIZE', i)}
-                    className={`h-14 rounded-2xl font-black text-xl md:text-2xl shadow-sm transition-all active:scale-90 flex items-center justify-center ${
-                      isOpened
-                        ? 'bg-gray-200 text-gray-400 border border-gray-300 opacity-60'
-                        : 'bg-white hover:bg-[#feefde] text-[#cb000b] border-2 border-[#fdc879]'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 
-        하단 컨트롤러:
-        선물 탭에서는 중복 번호판이 아니라 [팝업 닫기 (ESC)]와 [전체 리셋] 버튼이 정상 출력
-      */}
-      <div className="flex-shrink-0 space-y-1.5 pt-1 pb-1">
-        {activeTab === 'audio' && (
-          <div className="grid grid-cols-4 gap-1.5">
+    <div 
+      className="min-h-screen text-gray-800 flex flex-col font-sans bg-cover bg-center bg-no-repeat relative selection:bg-[#cb000b] selection:text-white"
+      style={{ backgroundColor: '#FFFFFF', backgroundImage: `url(${bgImageUrl})` }}
+    >
+      <header className="relative z-30 w-full px-8 py-4 flex justify-between items-start select-none">
+        <div className="flex flex-col items-start gap-2.5">
+          <nav className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-[#fdc879]">
             <button
-              onClick={() => sendAction(isQuizPlaying ? 'PAUSE_AUDIO' : 'PLAY_AUDIO')}
-              className={`col-span-3 py-3 rounded-2xl text-base font-black text-white shadow-md flex items-center justify-center gap-2 active:scale-95 ${
-                isQuizPlaying ? 'bg-[#fa4134] animate-pulse' : 'bg-[#cb000b]'
+              onClick={() => setActiveTab('nonsense')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === 'nonsense' ? 'bg-[#cb000b] text-white shadow-sm' : 'text-gray-600 hover:text-[#cb000b]'
               }`}
             >
-              {isQuizPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-              {isQuizPlaying ? '일시정지' : '두 곡 재생 🎶'}
+              <ImageIcon className="w-4 h-4" /> 그림 넌센스
             </button>
             <button
-              onClick={() => sendAction('RESTART_AUDIO')}
-              className="py-3 bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-2xl flex items-center justify-center shadow-md active:scale-95"
+              onClick={() => setActiveTab('audio')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === 'audio' ? 'bg-[#cb000b] text-white shadow-sm' : 'text-gray-600 hover:text-[#cb000b]'
+              }`}
+            >
+              <Music className="w-4 h-4" /> 찬양 동시듣기
+            </button>
+            <button
+              onClick={() => setActiveTab('prizes')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === 'prizes' ? 'bg-[#076327] text-white shadow-sm' : 'text-gray-600 hover:text-[#076327]'
+              }`}
+            >
+              <Gift className="w-4 h-4" /> 선물 뽑기판
+            </button>
+          </nav>
+
+          <div className="pl-1">
+            {activeTab === 'nonsense' && (
+              <span className="bg-[#cb000b] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-sm inline-block">
+                문제 {nonsenseIndex + 1} / {NONSENSE_QUIZZES.length}
+              </span>
+            )}
+            {activeTab === 'audio' && (
+              <span className="bg-[#076327] text-white font-black px-5 py-1.5 rounded-xl text-base shadow-sm inline-block">
+                음악 퀴즈 {audioIndex + 1} / {DUAL_AUDIO_QUIZZES.length}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowRemoteModal(true)}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-black shadow-sm border transition-all flex items-center gap-1.5 ${
+              isRemoteConnected 
+                ? 'bg-[#076327] text-white border-[#239b48]' 
+                : 'bg-white hover:bg-[#feefde] text-[#cb000b] border-[#fdc879]'
+            }`}
+            title="스마트폰 무선 리모컨 연결"
+          >
+            <Smartphone className="w-4 h-4" />
+            {isRemoteConnected ? '리모컨 연결됨 🟢' : '📱 모바일 리모컨'}
+          </button>
+
+          {activeTab === 'prizes' && (
+            <button
+              onClick={handleResetPrizeBoard}
+              className="p-2.5 bg-white hover:bg-[#feefde] text-[#cb000b] rounded-2xl shadow-sm border border-red-200 transition-all flex items-center justify-center"
+              title="뽑기판 초기화"
             >
               <RotateCcw className="w-5 h-5" />
             </button>
+          )}
+
+          <button
+            onClick={toggleFullscreen}
+            className="p-2.5 bg-white hover:bg-[#feefde] text-gray-700 rounded-2xl shadow-sm border border-[#fdc879] transition-all flex items-center justify-center"
+            title="전체화면"
+          >
+            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+          </button>
+
+          <BgmPlayer 
+            isMuted={isMuted} 
+            setIsMuted={setIsMuted} 
+            volume={volume} 
+            setVolume={setVolume}
+            isQuizPlaying={isQuizPlaying}
+          />
+        </div>
+      </header>
+
+      <main className="relative z-10 w-full max-w-[1720px] mx-auto px-6 pt-[80px] pb-6 flex-grow flex flex-col justify-center items-center">
+        {activeTab === 'nonsense' && <ImageNonsenseQuiz index={nonsenseIndex} setIndex={setNonsenseIndex} />}
+        {activeTab === 'audio' && <DualAudioQuiz index={audioIndex} setIndex={setAudioIndex} onPlayStateChange={setIsQuizPlaying} />}
+        {activeTab === 'prizes' && <PrizeBoard key={prizeResetKey} />}
+      </main>
+
+      {showRemoteModal && (
+        <div 
+          onClick={() => setShowRemoteModal(false)}
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl relative border-2 border-[#fdab23]"
+          >
+            <button 
+              onClick={() => setShowRemoteModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 rounded-full"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h3 className="text-xl font-black text-[#cb000b] mb-1">사회자 스마트폰 연결</h3>
+            <p className="text-xs text-gray-500 mb-4">폰 카메라로 QR을 찍으면 바로 연결됩니다</p>
+
+            <div className="bg-white p-3 rounded-2xl border border-gray-200 inline-block shadow-sm mb-4">
+              <img src={qrCodeUrl} alt="리모컨 QR 코드" className="w-44 h-44 mx-auto" />
+            </div>
+
+            <div className="bg-[#fdf4e8] p-3 rounded-xl border border-[#fdc879] mb-3">
+              <span className="text-xs text-gray-500 font-bold block mb-1">접속 PIN 번호</span>
+              <span className="text-3xl font-black text-[#cb000b] tracking-widest">{roomPin}</span>
+            </div>
+
+            <p className="text-[11px] text-[#076327] font-bold">
+              {isRemoteConnected ? '🟢 사회자 폰이 연결되었습니다!' : '대기 중... (LTE 데이터로도 접속 가능)'}
+            </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab !== 'prizes' && (
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => sendAction('TOGGLE_HINT')}
-              className="py-3 bg-[#fdab23] text-white text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <HelpCircle className="w-4 h-4" /> 힌트 열기/닫기
-            </button>
-
-            <button
-              onClick={() => sendAction('TOGGLE_ANSWER')}
-              className="py-3 bg-[#cb000b] text-white text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <Eye className="w-4 h-4" /> 정답 열기/닫기
-            </button>
-          </div>
-        )}
-
-        {/* 🌟 선물 탭 하단: 팝업 닫기(ESC) 및 전체 리셋 버튼 정상 복구 */}
-        {activeTab === 'prizes' && (
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => sendAction('CLOSE_MODAL')}
-              className="py-3 bg-gray-700 text-white text-xs font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <X className="w-4 h-4" /> 팝업 닫기 (ESC)
-            </button>
-
-            <button
-              onClick={() => sendAction('RESET_PRIZES')}
-              className="py-3 bg-red-100 text-[#cb000b] border border-red-200 text-xs font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <RefreshCw className="w-4 h-4" /> 뽑기판 전체 리셋
-            </button>
-          </div>
-        )}
-      </div>
-
+      <footer className="relative z-10 py-1 text-center text-xs text-[#cb000b]/70 font-semibold select-none">
+        🎄 성탄 축하 레크리에이션
+      </footer>
     </div>
   );
 }
