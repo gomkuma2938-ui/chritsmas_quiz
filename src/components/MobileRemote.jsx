@@ -219,26 +219,21 @@ export default function MobileRemote() {
         </div>
       </div>
 
-      {/* 중앙: 번호 패드 + 상시 노출형 사회자 정답 치트시트(컨닝페이퍼) */}
-      <div className="flex-1 min-h-0 flex flex-col justify-between my-1 overflow-y-auto px-1">
+      {/* 중앙: 숫자 번호판 먼저 ➔ 정답 박스는 숫자 아래로 배치 */}
+      <div className="flex-1 min-h-0 flex flex-col justify-center my-1 overflow-y-auto px-1">
         
         {/* 1. 넌센스 탭 */}
         {activeTab === 'nonsense' && (
-          <div className="space-y-2">
-            {/* 🔥정답 박스 */}
-            <div className="bg-[#cb000b] text-white p-3 rounded-2xl shadow-md text-center border border-yellow-300">
-              <span className="text-[15px] font-black uppercase tracking-wider text-yellow-200 block">사회자 전용 정답 (스크린 미출력)</span>
-              <div className="text-xl md:text-2xl font-black mt-0.5 text-yellow-300">{currentNonsense.a}</div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-1.5 max-w-sm mx-auto w-full">
+          <div className="space-y-3">
+            {/* 번호판 먼저 배치 */}
+            <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto w-full">
               {Array.from({ length: NONSENSE_QUIZZES.length }, (_, i) => {
                 const isCurrent = nonsenseIndex === i;
                 return (
                   <button
                     key={i}
                     onClick={() => sendAction('SET_INDEX', i)}
-                    className={`h-12 rounded-xl font-black text-lg shadow-sm transition-all active:scale-95 flex items-center justify-center ${
+                    className={`h-14 rounded-2xl font-black text-xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
                       isCurrent
                         ? 'bg-[#cb000b] text-white border-2 border-[#fdc879] scale-105'
                         : 'bg-white text-gray-800 border border-gray-200'
@@ -249,28 +244,28 @@ export default function MobileRemote() {
                 );
               })}
             </div>
+
+            {/* 🔥 번호판 '아래'에 정답 배치 (문구 삭제 + text-3xl~4xl 특대형) */}
+            <div className="bg-[#cb000b] text-white py-4 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-sm mx-auto w-full">
+              <div className="text-3xl md:text-4xl font-black text-yellow-300 drop-shadow-sm leading-tight break-keep">
+                {currentNonsense.a}
+              </div>
+            </div>
           </div>
         )}
 
         {/* 2. 찬양 탭 */}
         {activeTab === 'audio' && (
-          <div className="space-y-2">
-            {/* 🔥 사회자 전용 상시 노출 정답 박스 */}
-            <div className="bg-[#076327] text-white p-3 rounded-2xl shadow-md text-center border border-yellow-300">
-              <span className="text-[10px] font-black uppercase tracking-wider text-yellow-200 block">사회자 전용 찬양 정답</span>
-              <div className="text-xs md:text-sm font-black mt-0.5 text-yellow-200 leading-tight">
-                A: {currentAudio.songA.title} / B: {currentAudio.songB.title}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto w-full">
+          <div className="space-y-3">
+            {/* 번호판 먼저 배치 */}
+            <div className="grid grid-cols-3 gap-2.5 max-w-xs mx-auto w-full">
               {Array.from({ length: DUAL_AUDIO_QUIZZES.length }, (_, i) => {
                 const isCurrent = audioIndex === i;
                 return (
                   <button
                     key={i}
                     onClick={() => sendAction('SET_INDEX', i)}
-                    className={`h-14 rounded-xl font-black text-xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
+                    className={`h-16 rounded-2xl font-black text-2xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
                       isCurrent
                         ? 'bg-[#076327] text-white border-2 border-[#fdc879] scale-105'
                         : 'bg-white text-gray-800 border border-gray-200'
@@ -281,19 +276,28 @@ export default function MobileRemote() {
                 );
               })}
             </div>
+
+            {/* 🔥 번호판 '아래'에 찬양 2곡 정답 배치 (문구 삭제 + text-xl 특대형) */}
+            <div className="bg-[#076327] text-white py-3.5 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-xs mx-auto w-full space-y-1">
+              <div className="text-lg md:text-xl font-black text-yellow-300 leading-snug break-keep">
+                A: {currentAudio.songA.title}
+              </div>
+              <div className="text-lg md:text-xl font-black text-white leading-snug break-keep">
+                B: {currentAudio.songB.title}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* 3. 선물 뽑기판 탭 */}
+        {/* 3. 선물 뽑기판 탭 (5열 배치 + h-14 + text-xl~2xl로 대폭 키움!) */}
         {activeTab === 'prizes' && (
           <div className="space-y-1">
-            <p className="text-center text-[11px] font-bold text-gray-500 mb-1">선물 번호판 원격 제어</p>
-            <div className="grid grid-cols-6 gap-1 max-w-sm mx-auto w-full">
+            <div className="grid grid-cols-5 gap-2 max-w-sm mx-auto w-full">
               {Array.from({ length: 23 }, (_, i) => (
                 <button
                   key={i}
                   onClick={() => sendAction('CLICK_PRIZE', i)}
-                  className="h-10 bg-white hover:bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-lg font-black text-base shadow-sm transition-all active:scale-90 flex items-center justify-center"
+                  className="h-14 bg-white hover:bg-[#feefde] text-[#cb000b] border-2 border-[#fdc879] rounded-2xl font-black text-xl md:text-2xl shadow-sm transition-all active:scale-90 flex items-center justify-center"
                 >
                   {i + 1}
                 </button>
@@ -336,7 +340,7 @@ export default function MobileRemote() {
 
             <button
               onClick={() => sendAction('TOGGLE_ANSWER')}
-              className="py-3 bg-[#cb000b] text-white text-sm font-black rounded-2xl shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+              className="py-3 bg-[#cb000b] text-white text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
             >
               <Eye className="w-4 h-4" /> 정답 열기/닫기
             </button>
