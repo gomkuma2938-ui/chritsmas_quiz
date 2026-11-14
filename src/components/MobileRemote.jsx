@@ -13,6 +13,7 @@ export default function MobileRemote() {
     nonsenseIndex: 0,
     audioIndex: 0,
     isQuizPlaying: false,
+    openedCards: {}, // 🎁 열린 선물 카드 목록
   });
 
   const peerRef = useRef(null);
@@ -151,6 +152,13 @@ export default function MobileRemote() {
   const sendAction = (action, payload = null) => {
     if (connRef.current && isConnected) {
       connRef.current.send({ action, payload });
+      // 폰에서 번호 눌렀을 때도 폰 화면에서 즉시 열린 상태로 표시
+      if (action === 'CLICK_PRIZE') {
+        setGameState((prev) => ({
+          ...prev,
+          openedCards: { ...prev.openedCards, [payload]: true },
+        }));
+      }
     }
   };
 
@@ -182,7 +190,7 @@ export default function MobileRemote() {
     );
   }
 
-  const { activeTab, nonsenseIndex, audioIndex, isQuizPlaying } = gameState;
+  const { activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards = {} } = gameState;
   const currentNonsense = NONSENSE_QUIZZES[nonsenseIndex] || NONSENSE_QUIZZES[0];
   const currentAudio = DUAL_AUDIO_QUIZZES[audioIndex] || DUAL_AUDIO_QUIZZES[0];
 
@@ -219,13 +227,12 @@ export default function MobileRemote() {
         </div>
       </div>
 
-      {/* 중앙: 숫자 번호판 먼저 ➔ 정답 박스는 숫자 아래로 배치 */}
+      {/* 중앙: 번호판 및 정답 */}
       <div className="flex-1 min-h-0 flex flex-col justify-center my-1 overflow-y-auto px-1">
         
         {/* 1. 넌센스 탭 */}
         {activeTab === 'nonsense' && (
           <div className="space-y-3">
-            {/* 번호판 먼저 배치 */}
             <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto w-full">
               {Array.from({ length: NONSENSE_QUIZZES.length }, (_, i) => {
                 const isCurrent = nonsenseIndex === i;
@@ -245,7 +252,6 @@ export default function MobileRemote() {
               })}
             </div>
 
-            {/* 🔥 번호판 '아래'에 정답 배치 (문구 삭제 + text-3xl~4xl 특대형) */}
             <div className="bg-[#cb000b] text-white py-4 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-sm mx-auto w-full">
               <div className="text-3xl md:text-4xl font-black text-yellow-300 drop-shadow-sm leading-tight break-keep">
                 {currentNonsense.a}
@@ -257,7 +263,6 @@ export default function MobileRemote() {
         {/* 2. 찬양 탭 */}
         {activeTab === 'audio' && (
           <div className="space-y-3">
-            {/* 번호판 먼저 배치 */}
             <div className="grid grid-cols-3 gap-2.5 max-w-xs mx-auto w-full">
               {Array.from({ length: DUAL_AUDIO_QUIZZES.length }, (_, i) => {
                 const isCurrent = audioIndex === i;
@@ -277,7 +282,6 @@ export default function MobileRemote() {
               })}
             </div>
 
-            {/* 🔥 번호판 '아래'에 찬양 2곡 정답 배치 (문구 삭제 + text-xl 특대형) */}
             <div className="bg-[#076327] text-white py-3.5 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-xs mx-auto w-full space-y-1">
               <div className="text-lg md:text-xl font-black text-yellow-300 leading-snug break-keep">
                 A: {currentAudio.songA.title}
@@ -289,19 +293,26 @@ export default function MobileRemote() {
           </div>
         )}
 
-        {/* 3. 선물 뽑기판 탭 (5열 배치 + h-14 + text-xl~2xl로 대폭 키움!) */}
+        {/* 3. 선물 뽑기판 탭: 이미 열린 카드는 회색 음영 + 취소선 처리! */}
         {activeTab === 'prizes' && (
           <div className="space-y-1">
             <div className="grid grid-cols-5 gap-2 max-w-sm mx-auto w-full">
-              {Array.from({ length: 23 }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendAction('CLICK_PRIZE', i)}
-                  className="h-14 bg-white hover:bg-[#feefde] text-[#cb000b] border-2 border-[#fdc879] rounded-2xl font-black text-xl md:text-2xl shadow-sm transition-all active:scale-90 flex items-center justify-center"
-                >
-                  {i + 1}
-                </button>
-              ))}
+              {Array.from({ length: 23 }, (_, i) => {
+                const isOpened = Boolean(openedCards && openedCards[i]);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => sendAction('CLICK_PRIZE', i)}
+                    className={`h-14 rounded-2xl font-black text-xl md:text-2xl shadow-sm transition-all active:scale-90 flex items-center justify-center ${
+                      isOpened
+                        ? 'bg-gray-200 text-gray-400 border border-gray-300 line-through opacity-60'
+                        : 'bg-white hover:bg-[#feefde] text-[#cb000b] border-2 border-[#fdc879]'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -347,21 +358,27 @@ export default function MobileRemote() {
           </div>
         )}
 
+        {/* 3. 선물 뽑기판 탭 (취소선 제거, 깔끔한 회색 음영만 적용) */}
         {activeTab === 'prizes' && (
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => sendAction('CLOSE_MODAL')}
-              className="py-3 bg-gray-700 text-white text-xs font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <X className="w-4 h-4" /> 팝업 닫기 (ESC)
-            </button>
-
-            <button
-              onClick={() => sendAction('RESET_PRIZES')}
-              className="py-3 bg-red-100 text-[#cb000b] border border-red-200 text-xs font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <RefreshCw className="w-4 h-4" /> 뽑기판 전체 리셋
-            </button>
+          <div className="space-y-1">
+            <div className="grid grid-cols-5 gap-2 max-w-sm mx-auto w-full">
+              {Array.from({ length: 23 }, (_, i) => {
+                const isOpened = Boolean(openedCards && openedCards[i]);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => sendAction('CLICK_PRIZE', i)}
+                    className={`h-14 rounded-2xl font-black text-xl md:text-2xl shadow-sm transition-all active:scale-90 flex items-center justify-center ${
+                      isOpened
+                        ? 'bg-gray-200 text-gray-400 border border-gray-300 opacity-60'
+                        : 'bg-white hover:bg-[#feefde] text-[#cb000b] border-2 border-[#fdc879]'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
