@@ -1,27 +1,50 @@
 // src/components/BgmPlayer.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX, Music } from 'lucide-react';
+import { Volume2, VolumeX, Music, SkipForward } from 'lucide-react';
 
 export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQuizPlaying }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const audioRef = useRef(null);
   
-  // 퀴즈 틀기 전에 BGM이 켜져 있었는지 기억하는 플래그
   const wasPlayingBeforeQuizRef = useRef(false);
 
-  const bgmSrc = `${import.meta.env.BASE_URL}audio/bgm.mp3`;
+  // 🎶 플레이리스트 목록 (public/audio/ 폴더 안에 있는 파일명들을 여기에 계속 추가하시면 됩니다!)
+  const playlist = [
+    `${import.meta.env.BASE_URL}audio/bgm1.mp3`,
+    `${import.meta.env.BASE_URL}audio/bgm2.mp3`,
+    `${import.meta.env.BASE_URL}audio/bgm3.mp3`,
+    `${import.meta.env.BASE_URL}audio/bgm4.mp3`,
+    `${import.meta.env.BASE_URL}audio/bgm5.mp3`,
+    `${import.meta.env.BASE_URL}audio/bgm6.mp3`,
+  ];
 
-  // 오디오 인스턴스 초기화
+  // 오디오 인스턴스 초기화 및 플레이리스트 자동 다음 곡 넘기기 설정
   useEffect(() => {
-    const audio = new Audio(bgmSrc);
-    audio.loop = true;
+    const audio = new Audio(playlist[currentTrackIndex]);
     audioRef.current = audio;
+
+    // 현재 곡이 끝나면 자동으로 다음 트랙으로 넘어가기 (플레이리스트 루프)
+    const handleEnded = () => {
+      setCurrentTrackIndex((prevIndex) => (prevIndex + 1) % playlist.length);
+    };
+
+    audio.addEventListener('ended', handleEnded);
 
     return () => {
       audio.pause();
+      audio.removeEventListener('ended', handleEnded);
       audioRef.current = null;
     };
-  }, [bgmSrc]);
+  }, [currentTrackIndex]);
+
+  // 트랙이 바뀌었는데 BGM이 켜져 있는 상태였다면 바로 재생
+  useEffect(() => {
+    if (isPlaying && audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume / 100;
+      audioRef.current.play().catch(() => {});
+    }
+  }, [currentTrackIndex]);
 
   // 볼륨 및 음소거 반영
   useEffect(() => {
@@ -42,23 +65,29 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
       audioRef.current.play().then(() => {
         setIsPlaying(true);
         wasPlayingBeforeQuizRef.current = true;
-      }).catch(err => console.warn("BGM 파일이 없거나 재생이 차단되었습니다.", err));
+      }).catch(err => console.warn("음원 파일을 찾을 수 없거나 재생이 차단되었습니다.", err));
     }
   };
 
-  // 🔥 핵심: 찬양 퀴즈 재생 시 BGM 자동 일시정지, 퀴즈 멈추면 이어서 자동 재생!
+  // 수동으로 다음 곡으로 넘기는 버튼
+  const handleNextTrack = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    setCurrentTrackIndex((prevIndex) => (prevIndex + 1) % playlist.length);
+  };
+
+  // 퀴즈 재생 시 BGM 자동 일시정지 / 복구 연동
   useEffect(() => {
     if (!audioRef.current) return;
 
     if (isQuizPlaying) {
-      // 퀴즈 시작됨 -> BGM이 켜져 있었다면 멈추고 기억
       if (isPlaying) {
         wasPlayingBeforeQuizRef.current = true;
         audioRef.current.pause();
         setIsPlaying(false);
       }
     } else {
-      // 퀴즈 멈춤 -> 퀴즈 전에 BGM 켜고 있었으면 멈춘 지점부터 다시 재생
       if (wasPlayingBeforeQuizRef.current) {
         wasPlayingBeforeQuizRef.current = false;
         audioRef.current.play().then(() => {
@@ -69,15 +98,24 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
   }, [isQuizPlaying]);
 
   return (
-    <div className="flex items-center gap-3 bg-white/95 border border-[#fdc879] px-4 py-2 rounded-2xl shadow-sm text-gray-800">
+    <div className="flex items-center gap-2.5 bg-white/95 border border-[#fdc879] px-4 py-2 rounded-2xl shadow-sm text-gray-800">
       <button 
         onClick={toggleBgm}
-        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
           isPlaying ? 'bg-[#076327] text-white animate-pulse' : 'bg-[#cb000b] hover:bg-[#fa4134] text-white'
         }`}
       >
         <Music className="w-4 h-4" />
-        {isPlaying ? 'BGM 켜짐 🎶' : 'BGM 재생 ▶'}
+        {isPlaying ? `BGM 재생중 (${currentTrackIndex + 1}/${playlist.length})` : 'BGM 재생 ▶'}
+      </button>
+
+      {/* 수동으로 다음 곡 스킵 버튼 */}
+      <button 
+        onClick={handleNextTrack}
+        className="p-1.5 hover:bg-[#feefde] rounded-lg text-[#076327] transition-colors"
+        title="다음 BGM으로 넘기기"
+      >
+        <SkipForward className="w-4 h-4" />
       </button>
 
       <button 
@@ -96,9 +134,9 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
           setVolume(Number(e.target.value));
           if (isMuted) setIsMuted(false);
         }}
-        className="w-20 md:w-28 accent-[#cb000b] h-2 bg-red-100 rounded-lg cursor-pointer"
+        className="w-20 md:w-24 accent-[#cb000b] h-2 bg-red-100 rounded-lg cursor-pointer"
       />
-      <span className="text-xs font-bold w-8 text-[#cb000b]">{isMuted ? '0%' : `${volume}%`}</span>
+      <span className="text-xs font-bold w-7 text-[#cb000b]">{isMuted ? '0%' : `${volume}%`}</span>
     </div>
   );
 }
