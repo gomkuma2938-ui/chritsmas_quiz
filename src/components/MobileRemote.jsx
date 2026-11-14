@@ -225,9 +225,9 @@ export default function MobileRemote() {
         {/* 1. 넌센스 탭 */}
         {activeTab === 'nonsense' && (
           <div className="space-y-2">
-            {/* 🔥 사회자 전용 상시 노출 정답 박스 */}
+            {/* 🔥정답 박스 */}
             <div className="bg-[#cb000b] text-white p-3 rounded-2xl shadow-md text-center border border-yellow-300">
-              <span className="text-[10px] font-black uppercase tracking-wider text-yellow-200 block">사회자 전용 정답 (스크린 미출력)</span>
+              <span className="text-[15px] font-black uppercase tracking-wider text-yellow-200 block">사회자 전용 정답 (스크린 미출력)</span>
               <div className="text-xl md:text-2xl font-black mt-0.5 text-yellow-300">{currentNonsense.a}</div>
             </div>
 
