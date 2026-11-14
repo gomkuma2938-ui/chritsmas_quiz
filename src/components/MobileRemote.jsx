@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Peer from 'peerjs';
 import { Image as ImageIcon, Music, Gift, Maximize, Minimize, RotateCcw, Smartphone, X } from 'lucide-react';
-import BgmPlayer from './components/BgmPlayer';
 import ImageNonsenseQuiz from './components/ImageNonsenseQuiz';
 import DualAudioQuiz from './components/DualAudioQuiz';
 import PrizeBoard from './components/PrizeBoard';
