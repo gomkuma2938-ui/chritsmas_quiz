@@ -15,20 +15,22 @@ export default function PrizeBoard() {
 
   const [zoomedIndex, setZoomedIndex] = useState(null);
 
+  // 카드 클릭 시 뒤집기 & 모바일 동기화 이벤트 발송
   const handleCardClick = (idx) => {
-    if (!openedCards[idx]) {
-      const updated = { ...openedCards, [idx]: true };
-      setOpenedCards(updated);
-      try {
-        localStorage.setItem('christmas_gift_board_state', JSON.stringify(updated));
-      } catch (e) {
-        console.error("LocalStorage Save Error", e);
-      }
+    const updated = { ...openedCards, [idx]: true };
+    setOpenedCards(updated);
+    try {
+      localStorage.setItem('christmas_gift_board_state', JSON.stringify(updated));
+    } catch (e) {
+      console.error("LocalStorage Save Error", e);
     }
     setZoomedIndex(idx);
+
+    // 📡 사회자 폰 리모컨에 어떤 번호가 열렸는지 실시간 상태 전송
+    window.dispatchEvent(new CustomEvent('prize-board-updated', { detail: updated }));
   };
 
-  // 🔥 사회자 폰에서 원격으로 1~23번 카드 번호를 눌렀을 때 즉시 화면에서 오픈하는 이벤트 리스너
+  // 모바일 리모컨에서 원격으로 번호 눌렀을 때 반응
   useEffect(() => {
     const handleRemoteClick = (e) => {
       handleCardClick(e.detail);
@@ -57,7 +59,7 @@ export default function PrizeBoard() {
         .rotate-y-180 { transform: rotateY(180deg); }
       `}</style>
 
-      {/* 23개 카드 그리드 */}
+      {/* 23개 카드 그리드 (체크보드 패턴 보존) */}
       <div className="w-full grid grid-cols-4 md:grid-cols-6 gap-3.5 md:gap-4">
         {INITIAL_PRIZES.map((prize, idx) => {
           const isFlipped = !!openedCards[idx];
