@@ -14,14 +14,8 @@ export default function App() {
   const isRemoteParam = params.get('remote') === 'true' || params.has('remote');
   const isScreenParam = params.get('screen') === 'true';
 
-  // 🔥 수정된 감지 로직:
-  // - URL에 ?remote가 붙었거나,
-  // - '진짜 모바일 기기'이면서 동시에 '화면 가로 폭이 768px 미만(진짜 모바일 화면 크기)'일 때만 리모컨으로 전환!
-  // (F12 반응형 모드에서 창을 넓게 펴놓거나 PC로 보고 있으면 무조건 송출 화면이 유지됩니다)
   const isRealMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const isMobileScreenSize = window.innerWidth < 768;
-  
-  const shouldShowRemote = !isScreenParam && (isRemoteParam || (isRealMobileDevice && isMobileScreenSize));
+  const shouldShowRemote = !isScreenParam && (isRemoteParam || (isRealMobileDevice && window.innerWidth < 768));
 
   if (shouldShowRemote) {
     return <MobileRemote />;
@@ -37,6 +31,16 @@ export default function App() {
   const [audioIndex, setAudioIndex] = useState(0);
   const [isQuizPlaying, setIsQuizPlaying] = useState(false);
 
+  // 🎁 뽑기판 상태 보관용
+  const [openedCards, setOpenedCards] = useState(() => {
+    try {
+      const saved = localStorage.getItem('christmas_gift_board_state');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const [roomPin] = useState('4259');
   const [showRemoteModal, setShowRemoteModal] = useState(false);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
@@ -44,27 +48,31 @@ export default function App() {
   const connsRef = useRef([]);
   const peerRef = useRef(null);
 
-  // 💡 [버그 2 해결] 최신 상태를 항상 가리키는 Ref 선언 (신규 접속 시 정확한 값 보장)
-  const currentStateRef = useRef({ activeTab, nonsenseIndex, audioIndex, isQuizPlaying });
+  // 최신 상태 Ref에 openedCards 포함
+  const currentStateRef = useRef({ activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards });
   useEffect(() => {
-    currentStateRef.current = { activeTab, nonsenseIndex, audioIndex, isQuizPlaying };
-    
-    // 상태가 바뀔 때마다 연결된 모든 폰에 즉시 동기화 패킷 전송
+    currentStateRef.current = { activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards };
     connsRef.current.forEach((conn) => {
       if (conn.open) {
         conn.send({ type: 'SYNC', payload: currentStateRef.current });
       }
     });
-  }, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying]);
+  }, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards]);
+
+  // PrizeBoard에서 카드 열렸을 때 수신
+  useEffect(() => {
+    const handlePrizeUpdate = (e) => {
+      setOpenedCards(e.detail);
+    };
+    window.addEventListener('prize-board-updated', handlePrizeUpdate);
+    return () => window.removeEventListener('prize-board-updated', handlePrizeUpdate);
+  }, []);
 
   const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
 
-  // 📡 [버그 1 해결] Peer 객체 생성 시 의존성 배열에서 isQuizPlaying을 완전히 제거하여 음악 켜도 연결이 안 끊김!
   useEffect(() => {
     const peer = new Peer(`church-quiz-${roomPin}`, {
-      config: {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-      },
+      config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] },
     });
     peerRef.current = peer;
 
@@ -72,7 +80,6 @@ export default function App() {
       connsRef.current.push(conn);
       setIsRemoteConnected(true);
 
-      // 💡 [버그 2 해결] 새로 접속한 리모컨에게 가장 최신(Current) 상태를 즉시 전달
       conn.on('open', () => {
         conn.send({
           type: 'SYNC',
@@ -114,10 +121,8 @@ export default function App() {
       });
     });
 
-    return () => {
-      peer.destroy();
-    };
-  }, [roomPin]); // <-- 의존성에서 isQuizPlaying 영구 퇴출 완료
+    return () => peer.destroy();
+  }, [roomPin]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -131,7 +136,9 @@ export default function App() {
     try {
       localStorage.removeItem('christmas_gift_board_state');
     } catch (e) {}
+    setOpenedCards({});
     setPrizeResetKey((prev) => prev + 1);
+    window.dispatchEvent(new CustomEvent('prize-board-updated', { detail: {} }));
   };
 
   const remoteUrl = `${window.location.origin}${window.location.pathname}?remote=true&pin=${roomPin}`;
