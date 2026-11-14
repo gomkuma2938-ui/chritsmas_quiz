@@ -13,7 +13,7 @@ export default function MobileRemote() {
     nonsenseIndex: 0,
     audioIndex: 0,
     isQuizPlaying: false,
-    openedCards: {}, // 🎁 열린 선물 카드 목록
+    openedCards: {},
   });
 
   const peerRef = useRef(null);
@@ -152,7 +152,6 @@ export default function MobileRemote() {
   const sendAction = (action, payload = null) => {
     if (connRef.current && isConnected) {
       connRef.current.send({ action, payload });
-      // 폰에서 번호 눌렀을 때도 폰 화면에서 즉시 열린 상태로 표시
       if (action === 'CLICK_PRIZE') {
         setGameState((prev) => ({
           ...prev,
@@ -197,7 +196,7 @@ export default function MobileRemote() {
   return (
     <div className="h-[100dvh] max-h-[100dvh] bg-[#fdf4e8] flex flex-col justify-between p-3 select-none font-sans text-gray-800 overflow-hidden">
       
-      {/* 상단 탭 선택 */}
+      {/* 상단 탭 선택 바 */}
       <div className="flex-shrink-0 space-y-1.5">
         <div className="flex justify-between items-center bg-white px-3.5 py-1.5 rounded-xl shadow-sm border border-[#fdc879]">
           <span className="text-[11px] font-black text-[#076327] flex items-center gap-1.5">
@@ -293,7 +292,7 @@ export default function MobileRemote() {
           </div>
         )}
 
-        {/* 3. 선물 뽑기판 탭: 이미 열린 카드는 회색 음영 + 취소선 처리! */}
+        {/* 3. 선물 뽑기판 탭: 중앙에 '단 1개만' 위치 (취소선 없이 깔끔한 회색 음영) */}
         {activeTab === 'prizes' && (
           <div className="space-y-1">
             <div className="grid grid-cols-5 gap-2 max-w-sm mx-auto w-full">
@@ -305,7 +304,7 @@ export default function MobileRemote() {
                     onClick={() => sendAction('CLICK_PRIZE', i)}
                     className={`h-14 rounded-2xl font-black text-xl md:text-2xl shadow-sm transition-all active:scale-90 flex items-center justify-center ${
                       isOpened
-                        ? 'bg-gray-200 text-gray-400 border border-gray-300 line-through opacity-60'
+                        ? 'bg-gray-200 text-gray-400 border border-gray-300 opacity-60'
                         : 'bg-white hover:bg-[#feefde] text-[#cb000b] border-2 border-[#fdc879]'
                     }`}
                   >
@@ -318,7 +317,10 @@ export default function MobileRemote() {
         )}
       </div>
 
-      {/* 하단 컨트롤러 */}
+      {/* 
+        하단 컨트롤러:
+        선물 탭에서는 중복 번호판이 아니라 [팝업 닫기 (ESC)]와 [전체 리셋] 버튼이 정상 출력
+      */}
       <div className="flex-shrink-0 space-y-1.5 pt-1 pb-1">
         {activeTab === 'audio' && (
           <div className="grid grid-cols-4 gap-1.5">
@@ -358,27 +360,22 @@ export default function MobileRemote() {
           </div>
         )}
 
-        {/* 3. 선물 뽑기판 탭 (취소선 제거, 깔끔한 회색 음영만 적용) */}
+        {/* 🌟 선물 탭 하단: 팝업 닫기(ESC) 및 전체 리셋 버튼 정상 복구 */}
         {activeTab === 'prizes' && (
-          <div className="space-y-1">
-            <div className="grid grid-cols-5 gap-2 max-w-sm mx-auto w-full">
-              {Array.from({ length: 23 }, (_, i) => {
-                const isOpened = Boolean(openedCards && openedCards[i]);
-                return (
-                  <button
-                    key={i}
-                    onClick={() => sendAction('CLICK_PRIZE', i)}
-                    className={`h-14 rounded-2xl font-black text-xl md:text-2xl shadow-sm transition-all active:scale-90 flex items-center justify-center ${
-                      isOpened
-                        ? 'bg-gray-200 text-gray-400 border border-gray-300 opacity-60'
-                        : 'bg-white hover:bg-[#feefde] text-[#cb000b] border-2 border-[#fdc879]'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={() => sendAction('CLOSE_MODAL')}
+              className="py-3 bg-gray-700 text-white text-xs font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              <X className="w-4 h-4" /> 팝업 닫기 (ESC)
+            </button>
+
+            <button
+              onClick={() => sendAction('RESET_PRIZES')}
+              className="py-3 bg-red-100 text-[#cb000b] border border-red-200 text-xs font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              <RefreshCw className="w-4 h-4" /> 뽑기판 전체 리셋
+            </button>
           </div>
         )}
       </div>
