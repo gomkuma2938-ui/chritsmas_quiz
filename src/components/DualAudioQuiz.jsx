@@ -13,8 +13,13 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
   const current = DUAL_AUDIO_QUIZZES[index];
 
   useEffect(() => {
+    // DualAudioQuiz.jsx의 togglePlay 내부 중
     const audioA = audioARef.current;
     const audioB = audioBRef.current;
+    
+    // 두 곡 합쳐질 때 소리가 찢어지지 않도록 각각 60%로 낮춰서 재생
+    audioA.volume = 0.6;
+    audioB.volume = 0.6;
 
     audioA.pause();
     audioB.pause();
@@ -45,6 +50,7 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
     };
   }, [index, current]);
 
+  // [이어서 재생 / 일시정지] 토글
   const togglePlay = () => {
     const audioA = audioARef.current;
     const audioB = audioBRef.current;
@@ -53,12 +59,16 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
       audioA.pause();
       audioB.pause();
       setIsPlaying(false);
-      onPlayStateChange(false);
+      onPlayStateChange(false); // BGM 복구
     } else {
+      // 👇 [여기에 추가] 두 곡이 동시에 겹쳐 찢어지는 현상을 막기 위해 각각 볼륨 60%(0.6)로 설정
+      audioA.volume = 0.6;
+      audioB.volume = 0.6;
+
       Promise.all([audioA.play(), audioB.play()])
         .then(() => {
           setIsPlaying(true);
-          onPlayStateChange(true);
+          onPlayStateChange(true); // BGM 일시정지
         })
         .catch(err => {
           console.warn("오디오 재생 실패", err);
