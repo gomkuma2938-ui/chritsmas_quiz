@@ -5,7 +5,7 @@ import { Play, Pause, RotateCcw, HelpCircle, Eye, X, Smartphone, RefreshCw } fro
 import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from '../data/quizData';
 
 export default function MobileRemote() {
-  const [pin, setPin] = useState('');
+  const [pin, setPin] = useState('4259');
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [gameState, setGameState] = useState({
@@ -107,7 +107,6 @@ export default function MobileRemote() {
         }
       });
 
-      // 네트워크 불안정으로 끊긴 경우만 자동 재접속 (3초 딜레이)
       const handleDisconnect = () => {
         if (currentAttemptId !== attemptIdRef.current) return;
         setIsConnected(false);
@@ -128,7 +127,6 @@ export default function MobileRemote() {
     currentPeer.on('error', (err) => {
       if (currentAttemptId !== attemptIdRef.current) return;
       
-      // 💡 [개선 완료] 잘못된 PIN 입력(존재하지 않는 방)인 경우 무한 재시도 멈추고 입력창 오픈
       if (err.type === 'peer-unavailable') {
         alert('해당 PIN 번호의 방송실 화면을 찾을 수 없습니다. 번호를 다시 확인해주세요.');
         setIsConnected(false);
@@ -138,7 +136,6 @@ export default function MobileRemote() {
           reconnectTimerRef.current = null;
         }
       } else {
-        // 그 외 네트워크 에러는 자동 재시도
         setIsConnected(false);
         setIsConnecting(true);
         if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
@@ -164,7 +161,7 @@ export default function MobileRemote() {
           <Smartphone className="w-8 h-8" />
         </div>
         <h2 className="text-2xl font-black text-[#cb000b] mb-1">사회자 무선 리모컨</h2>
-        <p className="text-xs font-bold text-gray-500 mb-6">방송실 화면의 PIN 번호를 확인하세요</p>
+        <p className="text-xs font-bold text-gray-500 mb-6">방송실 화면의 PIN 번호(기본 4259)를 확인하세요</p>
 
         <div className="w-full max-w-xs space-y-3">
           <input
@@ -174,7 +171,6 @@ export default function MobileRemote() {
             placeholder="PIN 번호 4자리"
             className="w-full py-4 text-center text-3xl font-black tracking-widest rounded-2xl border-2 border-[#fdab23] bg-white outline-none focus:border-[#cb000b] shadow-inner"
           />
-          {/* 💡 [개선 완료] 실패 시에도 버튼을 항상 활성화하여 사용자가 언제든 다시 누를 수 있게 함 */}
           <button
             onClick={() => connectToHost(pin)}
             className="w-full py-4 bg-[#cb000b] hover:bg-[#fa4134] text-white text-xl font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
@@ -187,6 +183,8 @@ export default function MobileRemote() {
   }
 
   const { activeTab, nonsenseIndex, audioIndex, isQuizPlaying } = gameState;
+  const currentNonsense = NONSENSE_QUIZZES[nonsenseIndex] || NONSENSE_QUIZZES[0];
+  const currentAudio = DUAL_AUDIO_QUIZZES[audioIndex] || DUAL_AUDIO_QUIZZES[0];
 
   return (
     <div className="h-[100dvh] max-h-[100dvh] bg-[#fdf4e8] flex flex-col justify-between p-3 select-none font-sans text-gray-800 overflow-hidden">
@@ -195,7 +193,7 @@ export default function MobileRemote() {
       <div className="flex-shrink-0 space-y-1.5">
         <div className="flex justify-between items-center bg-white px-3.5 py-1.5 rounded-xl shadow-sm border border-[#fdc879]">
           <span className="text-[11px] font-black text-[#076327] flex items-center gap-1.5">
-            <span className="w-2 h-2 bg-[#076327] rounded-full animate-pulse" /> 방송실 연결됨 (실시간 동기화)
+            <span className="w-2 h-2 bg-[#076327] rounded-full animate-pulse" /> 리모컨 연결됨
           </span>
           <span className="text-[11px] font-bold text-gray-400">PIN: {pin}</span>
         </div>
@@ -221,21 +219,26 @@ export default function MobileRemote() {
         </div>
       </div>
 
-      {/* 중앙 다이렉트 번호 패드 */}
-      <div className="flex-1 min-h-0 flex flex-col justify-center my-1 overflow-hidden">
+      {/* 중앙: 번호 패드 + 상시 노출형 사회자 정답 치트시트(컨닝페이퍼) */}
+      <div className="flex-1 min-h-0 flex flex-col justify-between my-1 overflow-y-auto px-1">
+        
+        {/* 1. 넌센스 탭 */}
         {activeTab === 'nonsense' && (
-          <div className="space-y-1">
-            <p className="text-center text-[11px] font-bold text-gray-500 mb-1">
-              현재 스크린 문제 번호: <span className="text-[#cb000b] font-black">{nonsenseIndex + 1}번</span>
-            </p>
-            <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto w-full px-2">
+          <div className="space-y-2">
+            {/* 🔥 사회자 전용 상시 노출 정답 박스 */}
+            <div className="bg-[#cb000b] text-white p-3 rounded-2xl shadow-md text-center border border-yellow-300">
+              <span className="text-[10px] font-black uppercase tracking-wider text-yellow-200 block">사회자 전용 정답 (스크린 미출력)</span>
+              <div className="text-xl md:text-2xl font-black mt-0.5 text-yellow-300">{currentNonsense.a}</div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1.5 max-w-sm mx-auto w-full">
               {Array.from({ length: NONSENSE_QUIZZES.length }, (_, i) => {
                 const isCurrent = nonsenseIndex === i;
                 return (
                   <button
                     key={i}
                     onClick={() => sendAction('SET_INDEX', i)}
-                    className={`h-16 rounded-2xl font-black text-2xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
+                    className={`h-12 rounded-xl font-black text-lg shadow-sm transition-all active:scale-95 flex items-center justify-center ${
                       isCurrent
                         ? 'bg-[#cb000b] text-white border-2 border-[#fdc879] scale-105'
                         : 'bg-white text-gray-800 border border-gray-200'
@@ -249,19 +252,25 @@ export default function MobileRemote() {
           </div>
         )}
 
+        {/* 2. 찬양 탭 */}
         {activeTab === 'audio' && (
-          <div className="space-y-1">
-            <p className="text-center text-[11px] font-bold text-gray-500 mb-1">
-              현재 스크린 찬양 퀴즈: <span className="text-[#076327] font-black">{audioIndex + 1}번</span>
-            </p>
-            <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto w-full px-2">
+          <div className="space-y-2">
+            {/* 🔥 사회자 전용 상시 노출 정답 박스 */}
+            <div className="bg-[#076327] text-white p-3 rounded-2xl shadow-md text-center border border-yellow-300">
+              <span className="text-[10px] font-black uppercase tracking-wider text-yellow-200 block">사회자 전용 찬양 정답</span>
+              <div className="text-xs md:text-sm font-black mt-0.5 text-yellow-200 leading-tight">
+                A: {currentAudio.songA.title} / B: {currentAudio.songB.title}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto w-full">
               {Array.from({ length: DUAL_AUDIO_QUIZZES.length }, (_, i) => {
                 const isCurrent = audioIndex === i;
                 return (
                   <button
                     key={i}
                     onClick={() => sendAction('SET_INDEX', i)}
-                    className={`h-20 rounded-2xl font-black text-3xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
+                    className={`h-14 rounded-xl font-black text-xl shadow-sm transition-all active:scale-95 flex items-center justify-center ${
                       isCurrent
                         ? 'bg-[#076327] text-white border-2 border-[#fdc879] scale-105'
                         : 'bg-white text-gray-800 border border-gray-200'
@@ -275,15 +284,16 @@ export default function MobileRemote() {
           </div>
         )}
 
+        {/* 3. 선물 뽑기판 탭 */}
         {activeTab === 'prizes' && (
           <div className="space-y-1">
             <p className="text-center text-[11px] font-bold text-gray-500 mb-1">선물 번호판 원격 제어</p>
-            <div className="grid grid-cols-6 gap-1.5 max-w-sm mx-auto w-full px-1 max-h-[50vh] overflow-y-auto">
+            <div className="grid grid-cols-6 gap-1 max-w-sm mx-auto w-full">
               {Array.from({ length: 23 }, (_, i) => (
                 <button
                   key={i}
                   onClick={() => sendAction('CLICK_PRIZE', i)}
-                  className="h-12 bg-white hover:bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-xl font-black text-lg shadow-sm transition-all active:scale-90 flex items-center justify-center"
+                  className="h-10 bg-white hover:bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-lg font-black text-base shadow-sm transition-all active:scale-90 flex items-center justify-center"
                 >
                   {i + 1}
                 </button>
@@ -294,12 +304,12 @@ export default function MobileRemote() {
       </div>
 
       {/* 하단 컨트롤러 */}
-      <div className="flex-shrink-0 space-y-2 pt-1 pb-1">
+      <div className="flex-shrink-0 space-y-1.5 pt-1 pb-1">
         {activeTab === 'audio' && (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-1.5">
             <button
               onClick={() => sendAction(isQuizPlaying ? 'PAUSE_AUDIO' : 'PLAY_AUDIO')}
-              className={`col-span-3 py-3.5 rounded-2xl text-lg font-black text-white shadow-md flex items-center justify-center gap-2 active:scale-95 ${
+              className={`col-span-3 py-3 rounded-2xl text-base font-black text-white shadow-md flex items-center justify-center gap-2 active:scale-95 ${
                 isQuizPlaying ? 'bg-[#fa4134] animate-pulse' : 'bg-[#cb000b]'
               }`}
             >
@@ -308,7 +318,7 @@ export default function MobileRemote() {
             </button>
             <button
               onClick={() => sendAction('RESTART_AUDIO')}
-              className="py-3.5 bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-2xl flex items-center justify-center shadow-md active:scale-95"
+              className="py-3 bg-[#feefde] text-[#cb000b] border border-[#fdc879] rounded-2xl flex items-center justify-center shadow-md active:scale-95"
             >
               <RotateCcw className="w-5 h-5" />
             </button>
@@ -316,35 +326,35 @@ export default function MobileRemote() {
         )}
 
         {activeTab !== 'prizes' && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => sendAction('TOGGLE_HINT')}
-              className="py-3.5 bg-[#fdab23] text-white text-base font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+              className="py-3 bg-[#fdab23] text-white text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
             >
-              <HelpCircle className="w-5 h-5" /> 힌트 열기/닫기
+              <HelpCircle className="w-4 h-4" /> 힌트 열기/닫기
             </button>
 
             <button
               onClick={() => sendAction('TOGGLE_ANSWER')}
-              className="py-3.5 bg-[#cb000b] text-white text-base font-black rounded-2xl shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+              className="py-3 bg-[#cb000b] text-white text-sm font-black rounded-2xl shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
             >
-              <Eye className="w-5 h-5" /> 정답 열기/닫기
+              <Eye className="w-4 h-4" /> 정답 열기/닫기
             </button>
           </div>
         )}
 
         {activeTab === 'prizes' && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => sendAction('CLOSE_MODAL')}
-              className="py-3.5 bg-gray-700 text-white text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+              className="py-3 bg-gray-700 text-white text-xs font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
             >
               <X className="w-4 h-4" /> 팝업 닫기 (ESC)
             </button>
 
             <button
               onClick={() => sendAction('RESET_PRIZES')}
-              className="py-3.5 bg-red-100 text-[#cb000b] border border-red-200 text-sm font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+              className="py-3 bg-red-100 text-[#cb000b] border border-red-200 text-xs font-black rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-95"
             >
               <RefreshCw className="w-4 h-4" /> 뽑기판 전체 리셋
             </button>
