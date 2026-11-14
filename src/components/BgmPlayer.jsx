@@ -23,6 +23,7 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
     if (!playlist[currentTrackIndex]) return;
     
     const audio = new Audio(playlist[currentTrackIndex]);
+    audio.volume = isMuted ? 0 : volume / 100;
     audioRef.current = audio;
 
     const handleEnded = () => {
@@ -59,12 +60,13 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
       setIsPlaying(false);
       wasPlayingBeforeQuizRef.current = false;
     } else {
+      audioRef.current.volume = isMuted ? 0 : volume / 100;
       audioRef.current.play().then(() => {
         setIsPlaying(true);
         wasPlayingBeforeQuizRef.current = true;
       }).catch(err => {
         console.warn("재생 실패", err);
-        alert("public/audio/ 폴더에 bgm1.mp3 파일이 있는지, 파일명이 정확한지 확인해주세요.");
+        alert("재생 실패: " + err.name + " - " + err.message);
       });
     }
   };
