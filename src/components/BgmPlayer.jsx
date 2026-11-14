@@ -9,16 +9,14 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
   
   const wasPlayingBeforeQuizRef = useRef(false);
 
-  const BASE = import.meta.env.BASE_URL;
-
-  // 🔥 public/audio/ 경로를 직접 문자열 URL로 참조 (빌드 에러 원천 차단)
+  // 🔥 깃허브 페이지스 상대 경로 (현재 URL 기준 바로 밑의 audio 폴더 참조)
   const playlist = [
-    `${BASE}audio/bgm1.mp3`,
-    `${BASE}audio/bgm2.mp3`,
-    `${BASE}audio/bgm3.mp3`,
-    `${BASE}audio/bgm4.mp3`,
-    `${BASE}audio/bgm5.mp3`,
-    `${BASE}audio/bgm6.mp3`,
+    'audio/bgm1.mp3',
+    'audio/bgm2.mp3',
+    'audio/bgm3.mp3',
+    'audio/bgm4.mp3',
+    'audio/bgm5.mp3',
+    'audio/bgm6.mp3',
   ];
 
   useEffect(() => {
@@ -66,7 +64,7 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
         wasPlayingBeforeQuizRef.current = true;
       }).catch(err => {
         console.warn("재생 실패", err);
-        alert("public/audio/ 폴더에 bgm1.mp3 파일이 있는지 확인해주세요.");
+        alert("public/audio/ 폴더에 bgm1.mp3 파일이 있는지, 파일명이 정확한지 확인해주세요.");
       });
     }
   };
