@@ -3,6 +3,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Eye, HelpCircle, X, Lightbulb, Music2, Disc3 } from 'lucide-react';
 import { DUAL_AUDIO_QUIZZES } from '../data/quizData';
 
+// 🔥 찬양 퀴즈용 음원 6개 직접 import (src/assets/audio/)
+import q1a from '../assets/audio/quiz1_a.mp3';
+import q1b from '../assets/audio/quiz1_b.mp3';
+import q2a from '../assets/audio/quiz2_a.mp3';
+import q2b from '../assets/audio/quiz2_b.mp3';
+import q3a from '../assets/audio/quiz3_a.mp3';
+import q3b from '../assets/audio/quiz3_b.mp3';
+
 export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
@@ -12,17 +20,28 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
 
   const current = DUAL_AUDIO_QUIZZES[index];
 
+  // 퀴즈 번호(index)에 맞춰 import된 올바른 mp3 소스 매핑
+  const getAudioSources = (currentIndex) => {
+    switch (currentIndex) {
+      case 0: return { a: q1a, b: q1b };
+      case 1: return { a: q2a, b: q2b };
+      case 2: return { a: q3a, b: q3b };
+      default: return { a: q1a, b: q1b };
+    }
+  };
+
   useEffect(() => {
     const audioA = audioARef.current;
     const audioB = audioBRef.current;
+    const sources = getAudioSources(index);
 
     audioA.pause();
     audioB.pause();
     audioA.currentTime = 0;
     audioB.currentTime = 0;
 
-    audioA.src = current.songA.src;
-    audioB.src = current.songB.src;
+    audioA.src = sources.a;
+    audioB.src = sources.b;
 
     setIsPlaying(false);
     onPlayStateChange(false);
@@ -43,7 +62,7 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
       audioA.removeEventListener('ended', handleEnded);
       audioB.removeEventListener('ended', handleEnded);
     };
-  }, [index, current]);
+  }, [index]);
 
   const togglePlay = () => {
     const audioA = audioARef.current;
@@ -61,7 +80,8 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
           onPlayStateChange(true);
         })
         .catch(err => {
-          console.warn("오디오 파일이 아직 없거나 재생이 차단되었습니다.", err);
+          console.warn("오디오 재생 실패 (음원 파일이 src/assets/audio/에 있는지 확인해주세요)", err);
+          alert(`음악 퀴즈 #${index + 1}번의 mp3 파일(a, b)을 찾을 수 없습니다.`);
         });
     }
   };
@@ -84,50 +104,52 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
   };
 
   const handleNext = () => {
+    stopAudioSilently();
     setActiveModal(null);
     setIndex((prev) => (prev + 1) % DUAL_AUDIO_QUIZZES.length);
   };
 
   const handlePrev = () => {
+    stopAudioSilently();
     setActiveModal(null);
     setIndex((prev) => (prev - 1 + DUAL_AUDIO_QUIZZES.length) % DUAL_AUDIO_QUIZZES.length);
+  };
+
+  const stopAudioSilently = () => {
+    audioARef.current.pause();
+    audioBRef.current.pause();
+    setIsPlaying(false);
+    onPlayStateChange(false);
   };
 
   // 키보드 단축키
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // 스페이스바: 재생 / 일시정지
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
         return;
       }
-      // R: 처음부터 다시 재생 (Restart ↺)
       if (e.key === 'r' || e.key === 'R') {
         restartAudio();
         return;
       }
-      // ESC: 팝업 닫기
       if (e.key === 'Escape') {
         setActiveModal(null);
         return;
       }
-      // H: 힌트 보기 토글
       if (e.key === 'h' || e.key === 'H') {
         setActiveModal((prev) => (prev === 'hint' ? null : 'hint'));
         return;
       }
-      // A: 정답 공개 토글
       if (e.key === 'a' || e.key === 'A') {
         setActiveModal((prev) => (prev === 'answer' ? null : 'answer'));
         return;
       }
-      // ← / PageUp: 이전 곡
       if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         handlePrev();
         return;
       }
-      // → / PageDown: 다음 곡
       if (e.key === 'ArrowRight' || e.key === 'PageDown') {
         handleNext();
         return;
@@ -140,6 +162,8 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
 
   return (
     <div className="w-full flex items-center justify-center gap-5 select-none">
+      
+      {/* 이전 화살표 */}
       <button
         onClick={handlePrev}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#076327] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
@@ -148,6 +172,7 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
         <ChevronLeft className="w-10 h-10 md:w-12 md:h-12 stroke-[3]" />
       </button>
 
+      {/* 카드 */}
       <div className="w-full max-w-[1500px] h-[640px] bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-12 shadow-2xl border border-[#fdc879] flex flex-col items-center justify-between text-center">
         <div className="pt-6">
           <h3 className="text-5xl md:text-6xl font-black text-[#076327] mb-2">{current.title}</h3>
@@ -156,7 +181,7 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
         <div className="my-auto flex items-center gap-4">
           <button
             onClick={togglePlay}
-            className="px-12 py-7 bg-[#cb000b] hover:bg-[#fa4134] text-white rounded-3xl font-black text-3xl shadow-lg flex items-center justify-center gap-3 transition-all transform hover:scale-105 active:scale-95"
+            className="px-12 py-7 bg-[#cb000b] hover:bg-[#fa4134] text-white rounded-3xl font-black text-3xl shadow-lg flex items-center justify-center gap-4 transition-all transform hover:scale-105 active:scale-95"
             title="재생/일시정지 (단축키: 스페이스바)"
           >
             {isPlaying ? (
@@ -198,6 +223,7 @@ export default function DualAudioQuiz({ index, setIndex, onPlayStateChange }) {
         </div>
       </div>
 
+      {/* 다음 화살표 */}
       <button
         onClick={handleNext}
         className="w-16 h-16 md:w-20 md:h-20 bg-white hover:bg-[#feefde] text-[#076327] rounded-full flex items-center justify-center shadow-xl transition-all transform hover:scale-105 active:scale-95 flex-shrink-0 border border-[#fdc879]"
