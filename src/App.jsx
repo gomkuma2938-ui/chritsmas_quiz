@@ -24,6 +24,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('nonsense');
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(40);
+  const [isBgmPlaying, setIsBgmPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [prizeResetKey, setPrizeResetKey] = useState(0);
 
@@ -47,22 +48,35 @@ export default function App() {
   const connsRef = useRef([]);
   const peerRef = useRef(null);
 
-  const currentStateRef = useRef({ activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards });
+  // BGM 상태까지 모바일 리모컨으로 실시간 동기화
+  const currentStateRef = useRef({ 
+    activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards,
+    isMuted, volume, isBgmPlaying 
+  });
+
   useEffect(() => {
-    currentStateRef.current = { activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards };
+    currentStateRef.current = { 
+      activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards,
+      isMuted, volume, isBgmPlaying 
+    };
     connsRef.current.forEach((conn) => {
       if (conn.open) {
         conn.send({ type: 'SYNC', payload: currentStateRef.current });
       }
     });
-  }, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards]);
+  }, [activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards, isMuted, volume, isBgmPlaying]);
 
   useEffect(() => {
-    const handlePrizeUpdate = (e) => {
-      setOpenedCards(e.detail);
-    };
+    const handlePrizeUpdate = (e) => setOpenedCards(e.detail);
+    const handleBgmState = (e) => setIsBgmPlaying(e.detail.isPlaying);
+
     window.addEventListener('prize-board-updated', handlePrizeUpdate);
-    return () => window.removeEventListener('prize-board-updated', handlePrizeUpdate);
+    window.addEventListener('bgm-state-changed', handleBgmState);
+
+    return () => {
+      window.removeEventListener('prize-board-updated', handlePrizeUpdate);
+      window.removeEventListener('bgm-state-changed', handleBgmState);
+    };
   }, []);
 
   const bgImageUrl = `${import.meta.env.BASE_URL}images/bg.jpg`;
@@ -110,6 +124,12 @@ export default function App() {
         if (action === 'RESTART_AUDIO') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
         if (action === 'CLOSE_MODAL') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
         if (action === 'RESET_PRIZES') handleResetPrizeBoard();
+
+        // 🎵 리모컨 BGM 조작 신호 수신
+        if (action === 'TOGGLE_BGM') window.dispatchEvent(new CustomEvent('remote-bgm-toggle'));
+        if (action === 'NEXT_BGM') window.dispatchEvent(new CustomEvent('remote-bgm-next'));
+        if (action === 'SET_BGM_VOLUME') setVolume(payload);
+        if (action === 'TOGGLE_BGM_MUTE') setIsMuted((prev) => !prev);
       });
 
       conn.on('close', () => {
@@ -129,7 +149,6 @@ export default function App() {
     }
   };
 
-  // 🔥 리셋 실행 시: 로컬 스토리지 삭제 + State 비우기 + 모든 리모컨에 즉시 openedCards: {} 패킷 강제 전송!
   const handleResetPrizeBoard = () => {
     try {
       localStorage.removeItem('christmas_gift_board_state');
@@ -160,7 +179,11 @@ export default function App() {
       className="min-h-screen text-gray-800 flex flex-col font-sans bg-cover bg-center bg-no-repeat relative selection:bg-[#cb000b] selection:text-white"
       style={{ backgroundColor: '#FFFFFF', backgroundImage: `url(${bgImageUrl})` }}
     >
-      <header className="relative z-30 w-full px-8 py-4 flex justify-between items-start select-none">
+      {/* 
+        🔥 [버그 해결]: header의 z-30을 제거하여, 
+        본문에서 팝업이 뜰 때 상단 바까지 완벽하게 어두운 오버레이 아래로 가려지도록 수정
+      */}
+      <header className="relative w-full px-8 py-4 flex justify-between items-start select-none">
         <div className="flex flex-col items-start gap-2.5">
           <nav className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-[#fdc879]">
             <button
@@ -245,16 +268,18 @@ export default function App() {
         </div>
       </header>
 
-      <main className="relative z-10 w-full max-w-[1720px] mx-auto px-6 pt-[80px] pb-6 flex-grow flex flex-col justify-center items-center">
+      {/* 중앙 메인 송출 뷰 (z-10 제거하여 팝업이 전체 화면을 덮도록 설정) */}
+      <main className="relative w-full max-w-[1720px] mx-auto px-6 pt-[80px] pb-6 flex-grow flex flex-col justify-center items-center">
         {activeTab === 'nonsense' && <ImageNonsenseQuiz index={nonsenseIndex} setIndex={setNonsenseIndex} />}
         {activeTab === 'audio' && <DualAudioQuiz index={audioIndex} setIndex={setAudioIndex} onPlayStateChange={setIsQuizPlaying} />}
         {activeTab === 'prizes' && <PrizeBoard key={prizeResetKey} />}
       </main>
 
+      {/* PC 리모컨 QR 모달 */}
       {showRemoteModal && (
         <div 
           onClick={() => setShowRemoteModal(false)}
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
@@ -286,7 +311,7 @@ export default function App() {
         </div>
       )}
 
-      <footer className="relative z-10 py-1 text-center text-xs text-[#cb000b]/70 font-semibold select-none">
+      <footer className="relative py-1 text-center text-xs text-[#cb000b]/70 font-semibold select-none">
         🎄 성탄 축하 레크리에이션
       </footer>
     </div>
