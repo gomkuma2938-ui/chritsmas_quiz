@@ -1,7 +1,7 @@
 // src/components/MobileRemote.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import Peer from 'peerjs';
-import { Play, Pause, RotateCcw, HelpCircle, Eye, X, Smartphone, RefreshCw } from 'lucide-react';
+import { Play, Pause, RotateCcw, HelpCircle, Eye, X, Smartphone, RefreshCw, Music, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { NONSENSE_QUIZZES, DUAL_AUDIO_QUIZZES } from '../data/quizData';
 
 export default function MobileRemote() {
@@ -14,6 +14,9 @@ export default function MobileRemote() {
     audioIndex: 0,
     isQuizPlaying: false,
     openedCards: {},
+    isMuted: false,
+    volume: 40,
+    isBgmPlaying: false,
   });
 
   const peerRef = useRef(null);
@@ -101,7 +104,6 @@ export default function MobileRemote() {
         setIsConnecting(false);
       });
 
-      // 💡 방송실 PC에서 동기화 신호(SYNC)가 올 때 openedCards를 확실히 갱신
       conn.on('data', (data) => {
         if (currentAttemptId !== attemptIdRef.current) return;
         if (data.type === 'SYNC') {
@@ -158,7 +160,6 @@ export default function MobileRemote() {
     if (connRef.current && isConnected) {
       connRef.current.send({ action, payload });
 
-      // 1. 번호를 누르면 폰에서도 즉시 회색 음영 처리
       if (action === 'CLICK_PRIZE') {
         setGameState((prev) => ({
           ...prev,
@@ -166,12 +167,22 @@ export default function MobileRemote() {
         }));
       }
 
-      // 🔥 2. 리셋을 누르면 폰에서도 즉시 회색 음영을 전부 지워버림!
       if (action === 'RESET_PRIZES') {
         setGameState((prev) => ({
           ...prev,
           openedCards: {},
         }));
+      }
+
+      // 로컬 즉시 반영
+      if (action === 'SET_BGM_VOLUME') {
+        setGameState((prev) => ({ ...prev, volume: payload, isMuted: false }));
+      }
+      if (action === 'TOGGLE_BGM_MUTE') {
+        setGameState((prev) => ({ ...prev, isMuted: !prev.isMuted }));
+      }
+      if (action === 'TOGGLE_BGM') {
+        setGameState((prev) => ({ ...prev, isBgmPlaying: !prev.isBgmPlaying }));
       }
     }
   };
@@ -204,15 +215,17 @@ export default function MobileRemote() {
     );
   }
 
-  const { activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards = {} } = gameState;
+  const { activeTab, nonsenseIndex, audioIndex, isQuizPlaying, openedCards = {}, isMuted, volume, isBgmPlaying } = gameState;
   const currentNonsense = NONSENSE_QUIZZES[nonsenseIndex] || NONSENSE_QUIZZES[0];
   const currentAudio = DUAL_AUDIO_QUIZZES[audioIndex] || DUAL_AUDIO_QUIZZES[0];
 
   return (
     <div className="h-[100dvh] max-h-[100dvh] bg-[#fdf4e8] flex flex-col justify-between p-3 select-none font-sans text-gray-800 overflow-hidden">
       
-      {/* 상단 탭 선택 바 */}
+      {/* 상단 섹션: 상태바 + 🎵 BGM 풀 컨트롤러 + 탭 선택 바 */}
       <div className="flex-shrink-0 space-y-1.5">
+        
+        {/* 상태바 */}
         <div className="flex justify-between items-center bg-white px-3.5 py-1.5 rounded-xl shadow-sm border border-[#fdc879]">
           <span className="text-[11px] font-black text-[#076327] flex items-center gap-1.5">
             <span className="w-2 h-2 bg-[#076327] rounded-full animate-pulse" /> 리모컨 연결됨
@@ -220,6 +233,52 @@ export default function MobileRemote() {
           <span className="text-[11px] font-bold text-gray-400">PIN: {pin}</span>
         </div>
 
+        {/* 🎵 사회자 전용 BGM 컨트롤 바 */}
+        <div className="bg-white px-3 py-1.5 rounded-xl shadow-sm border border-[#fdc879] flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => sendAction('TOGGLE_BGM')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
+                isBgmPlaying ? 'bg-[#076327] text-white animate-pulse' : 'bg-[#cb000b] text-white'
+              }`}
+            >
+              <Music className="w-3.5 h-3.5" />
+              {isBgmPlaying ? 'BGM ON' : 'BGM OFF'}
+            </button>
+
+            <button
+              onClick={() => sendAction('NEXT_BGM')}
+              className="p-1 bg-[#feefde] text-[#076327] rounded-lg hover:bg-[#fdc879] transition-all"
+              title="다음 BGM"
+            >
+              <SkipForward className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={() => sendAction('TOGGLE_BGM_MUTE')}
+              className="p-1 text-[#cb000b] hover:bg-[#feefde] rounded-lg transition-all"
+            >
+              {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-gray-400" /> : <Volume2 className="w-4 h-4 text-[#cb000b]" />}
+            </button>
+          </div>
+
+          {/* 볼륨 슬라이더 */}
+          <div className="flex items-center gap-1.5 flex-1 max-w-[130px]">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={isMuted ? 0 : volume}
+              onChange={(e) => sendAction('SET_BGM_VOLUME', Number(e.target.value))}
+              className="w-full accent-[#cb000b] h-1.5 bg-red-100 rounded-lg cursor-pointer"
+            />
+            <span className="text-[10px] font-bold text-gray-600 w-6 text-right">
+              {isMuted ? '0' : volume}%
+            </span>
+          </div>
+        </div>
+
+        {/* 탭 선택 */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -246,7 +305,7 @@ export default function MobileRemote() {
         
         {/* 1. 넌센스 탭 */}
         {activeTab === 'nonsense' && (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto w-full">
               {Array.from({ length: NONSENSE_QUIZZES.length }, (_, i) => {
                 const isCurrent = nonsenseIndex === i;
@@ -266,7 +325,7 @@ export default function MobileRemote() {
               })}
             </div>
 
-            <div className="bg-[#cb000b] text-white py-4 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-sm mx-auto w-full">
+            <div className="bg-[#cb000b] text-white py-3.5 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-sm mx-auto w-full">
               <div className="text-3xl md:text-4xl font-black text-yellow-300 drop-shadow-sm leading-tight break-keep">
                 {currentNonsense.a}
               </div>
@@ -276,7 +335,7 @@ export default function MobileRemote() {
 
         {/* 2. 찬양 탭 */}
         {activeTab === 'audio' && (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="grid grid-cols-3 gap-2.5 max-w-xs mx-auto w-full">
               {Array.from({ length: DUAL_AUDIO_QUIZZES.length }, (_, i) => {
                 const isCurrent = audioIndex === i;
@@ -296,7 +355,7 @@ export default function MobileRemote() {
               })}
             </div>
 
-            <div className="bg-[#076327] text-white py-3.5 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-xs mx-auto w-full space-y-1">
+            <div className="bg-[#076327] text-white py-3 px-3 rounded-2xl shadow-md text-center border-2 border-yellow-300 max-w-xs mx-auto w-full space-y-1">
               <div className="text-lg md:text-xl font-black text-yellow-300 leading-snug break-keep">
                 A: {currentAudio.songA.title}
               </div>
@@ -307,7 +366,7 @@ export default function MobileRemote() {
           </div>
         )}
 
-        {/* 3. 선물 뽑기판 탭: 회색 음영 처리 (취소선 없음) */}
+        {/* 3. 선물 뽑기판 탭 */}
         {activeTab === 'prizes' && (
           <div className="space-y-1">
             <div className="grid grid-cols-5 gap-2 max-w-sm mx-auto w-full">
