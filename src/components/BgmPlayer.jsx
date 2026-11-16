@@ -9,7 +9,6 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
   
   const wasPlayingBeforeQuizRef = useRef(false);
 
-  // 🔥 깃허브 페이지스 상대 경로 (현재 URL 기준 바로 밑의 audio 폴더 참조)
   const playlist = [
     'audio/bgm1.mp3',
     'audio/bgm2.mp3',
@@ -19,6 +18,7 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
     'audio/bgm6.mp3',
   ];
 
+  // 오디오 인스턴스 초기화
   useEffect(() => {
     if (!playlist[currentTrackIndex]) return;
     
@@ -39,6 +39,7 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
     };
   }, [currentTrackIndex]);
 
+  // 트랙 변경 시 자동 재생
   useEffect(() => {
     if (isPlaying && audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume / 100;
@@ -46,11 +47,31 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
     }
   }, [currentTrackIndex]);
 
+  // 볼륨 실시간 변경
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume / 100;
     }
   }, [volume, isMuted]);
+
+  // BGM 재생/정지 상태 변경 시 전체 앱으로 상태 알림
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('bgm-state-changed', { detail: { isPlaying } }));
+  }, [isPlaying]);
+
+  // 📡 사회자 폰 리모컨에서 원격으로 BGM 켜고 끄기 / 다음 곡 넘기기 수신
+  useEffect(() => {
+    const handleRemoteToggle = () => toggleBgm();
+    const handleRemoteNext = () => handleNextTrack();
+
+    window.addEventListener('remote-bgm-toggle', handleRemoteToggle);
+    window.addEventListener('remote-bgm-next', handleRemoteNext);
+
+    return () => {
+      window.removeEventListener('remote-bgm-toggle', handleRemoteToggle);
+      window.removeEventListener('remote-bgm-next', handleRemoteNext);
+    };
+  }, [isPlaying, currentTrackIndex, isMuted, volume]);
 
   const toggleBgm = () => {
     if (!audioRef.current) return;
@@ -66,7 +87,6 @@ export default function BgmPlayer({ isMuted, setIsMuted, volume, setVolume, isQu
         wasPlayingBeforeQuizRef.current = true;
       }).catch(err => {
         console.warn("재생 실패", err);
-        alert("재생 실패: " + err.name + " - " + err.message);
       });
     }
   };
