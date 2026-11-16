@@ -15,7 +15,6 @@ export default function PrizeBoard() {
 
   const [zoomedIndex, setZoomedIndex] = useState(null);
 
-  // 카드 클릭 시 뒤집기 & 모바일 동기화 이벤트 발송
   const handleCardClick = (idx) => {
     const updated = { ...openedCards, [idx]: true };
     setOpenedCards(updated);
@@ -26,11 +25,9 @@ export default function PrizeBoard() {
     }
     setZoomedIndex(idx);
 
-    // 📡 사회자 폰 리모컨에 어떤 번호가 열렸는지 실시간 상태 전송
     window.dispatchEvent(new CustomEvent('prize-board-updated', { detail: updated }));
   };
 
-  // 모바일 리모컨에서 원격으로 번호 눌렀을 때 반응
   useEffect(() => {
     const handleRemoteClick = (e) => {
       handleCardClick(e.detail);
@@ -39,7 +36,6 @@ export default function PrizeBoard() {
     return () => window.removeEventListener('remote-prize-click', handleRemoteClick);
   }, [openedCards]);
 
-  // ESC 단축키
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -94,33 +90,33 @@ export default function PrizeBoard() {
         })}
       </div>
 
-      {/* 🎁 특대형 선물 모달 */}
+      {/* 🎁 특대형 선물 모달 (글자 1.7배 대형화: text-6xl ~ 82px) */}
       {zoomedIndex !== null && (
         <div 
           onClick={() => setZoomedIndex(null)}
-          className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in cursor-pointer"
         >
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="bg-white rounded-3xl p-8 md:p-12 max-w-2xl w-full text-center shadow-2xl relative cursor-default border-2 border-[#fdab23]"
+            className="bg-white rounded-3xl p-10 md:p-14 max-w-4xl w-full text-center shadow-2xl relative cursor-default border-3 border-[#fdab23]"
           >
             <button 
               onClick={() => setZoomedIndex(null)}
-              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 p-2 rounded-full transition-all"
+              className="absolute top-6 right-6 text-gray-400 hover:text-gray-700 p-2 rounded-full transition-all"
             >
-              <X className="w-7 h-7" />
+              <X className="w-8 h-8" />
             </button>
 
-            <div className="w-16 h-16 mx-auto mb-3 bg-[#fdab23] rounded-2xl flex items-center justify-center text-white shadow-md">
-              <Gift className="w-9 h-9 stroke-[2.2]" />
+            <div className="w-18 h-18 mx-auto mb-4 bg-[#fdab23] rounded-2xl flex items-center justify-center text-white shadow-md">
+              <Gift className="w-10 h-10 stroke-[2.2]" />
             </div>
 
-            <span className="text-xs font-black tracking-widest text-[#cb000b] uppercase bg-[#feefde] px-4 py-1 rounded-full border border-[#fdc879]">
+            <span className="text-sm font-black tracking-widest text-[#cb000b] uppercase bg-[#feefde] px-5 py-1.5 rounded-full border border-[#fdc879]">
               LUCKY GIFT NO. {zoomedIndex + 1}
             </span>
 
-            <div className="mt-6 bg-[#fdf4e8] rounded-2xl p-6 md:p-8 border border-[#fdc879] shadow-inner">
-              <div className="text-4xl md:text-5xl font-black text-[#cb000b] my-2 leading-tight break-keep">
+            <div className="mt-8 bg-[#fdf4e8] rounded-3xl p-8 md:p-12 border-2 border-[#fdc879] shadow-inner">
+              <div className="text-5xl md:text-7xl lg:text-[82px] font-black text-[#cb000b] leading-tight break-keep drop-shadow-sm">
                 {INITIAL_PRIZES[zoomedIndex]}
               </div>
             </div>
